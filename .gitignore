@@ -1,0 +1,13 @@
+venv/
+.env
+__pycache__/
+*.pyc
+logs/
+*.log
+.vscode/
+*.db
+vector_store/
+memory/chroma_db/
+reports/generated_reports/
+reports/mentor_reports/
+uploads/
