@@ -70,7 +70,7 @@ graph TD
 *   **Resolved Memory System Error**: Debugged an issue where `sentence-transformers` was failing to import because of a `KeyError: 'tokenizers'` raised within Streamlit's file watcher.
 *   **Pre-Import Concurrency Fix**:
     *   Streamlit's `local_sources_watcher` was colliding with Hugging Face's lazy loader in a background thread when importing `sentence_transformers` and `transformers` concurrently.
-    *   **Fix**: Added a synchronous pre-import for `sentence_transformers` at the top of [memory/chroma_store.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/memory/chroma_store.py) to resolve the race condition.
+    *   **Fix**: Added a synchronous pre-import for `sentence-transformers` at the top of [memory/chroma_store.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/memory/chroma_store.py) to resolve the race condition.
 *   **Environment Validation**: Configured the virtual environment (`venv`) successfully, verifying that all imports execute cleanly and stably.
 
 ---
@@ -102,6 +102,7 @@ pip install -r requirements.txt
 ### Running the App
 Run the Streamlit frontend. It is recommended to use the `--server.fileWatcherType none` flag to optimize performance and prevent file-locking locks on Windows:
 ```powershell
+# Run the Streamlit app
 .\venv\Scripts\streamlit run frontend/app.py --server.fileWatcherType none
 ```
 
