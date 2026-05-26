@@ -12,14 +12,17 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools.groq_client import ask_groq
+from tools.web_search_tool import search_web, format_search_results
+from tools.browser_tool import scrape_article
 
-def create_research_prompt(topic: str) -> str:
+def create_research_prompt(topic: str, web_context: str = "") -> str:
     """
     Constructs an advanced, highly-engineered system prompt for the Groq model.
     This prompt enforces a strict professional structure and high-quality markdown output.
     
     Args:
         topic (str): The subject of the research.
+        web_context (str): Real-time web search results to integrate.
         
     Returns:
         str: The fully constructed prompt string.
@@ -29,7 +32,14 @@ You are an elite AI Research Scientist and Technical Analyst. Your task is to pr
 highly accurate, and professional research report on the following topic:
 
 Topic: "{topic}"
+"""
 
+    if web_context:
+        prompt += f"""
+{web_context}
+"""
+
+    prompt += f"""
 Please generate a detailed, structured markdown report. You must follow the exact structure outlined below, 
 using professional headings, bullet points where appropriate for readability, and concise but deeply technical explanations.
 
@@ -78,8 +88,38 @@ def generate_research(topic: str) -> str:
     if not topic:
         return "Error: Please provide a valid research topic."
         
+    # Step 1: Collect live web data search results
+    web_results = search_web(topic)
+    web_context = format_search_results(web_results)
+    
+    # Step 2: Open top 2 articles and scrape their contents
+    deep_context = ""
+    scraped_count = 0
+    
+    if web_results:
+        # We only scrape the top 2 results to stay within context windows and keep execution fast
+        for r in web_results[:2]:
+            url = r.get("url")
+            if url and url.startswith("http"):
+                print(f"[*] Deep Research: Launching browser to scrape content from: {url}")
+                article_text = scrape_article(url)
+                if article_text:
+                    deep_context += f"--- Deep Web Source: {r['title']} ({url}) ---\n"
+                    # Limit the scraped content to the first 3000 characters to prevent prompt bloat
+                    deep_context += f"{article_text[:3000]}\n"
+                    deep_context += "-" * 50 + "\n\n"
+                    scraped_count += 1
+                    
+        print(f"[*] Deep Research: Successfully gathered detailed context from {scraped_count} webpages.")
+        
+    if deep_context:
+        web_context += "\n### DEEP SCRAPED WEB PAGE CONTENT ###\n"
+        web_context += "The following are actual detailed readable sections scraped from the top web results. Use this detailed data to write highly specific, factual sections:\n\n"
+        web_context += deep_context
+        
     print(f"[*] Compiling research parameters for: {topic}...")
-    prompt = create_research_prompt(topic)
+    # Step 3: Combine it with Groq LLM reasoning
+    prompt = create_research_prompt(topic, web_context)
     
     print("[*] Transmitting request to Groq AI engine...")
     # Call the reusable ask_groq function from our tools module
