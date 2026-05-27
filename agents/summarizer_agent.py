@@ -71,6 +71,16 @@ def summarize_research(research_text: str) -> str:
         str: The structured, concise markdown summary.
     """
     print("[Summarizer Agent] Initializing analysis of research report...")
+
+    # --- Guard: if the upstream agent returned an error, pass it through cleanly ---
+    if research_text.startswith("⚠️"):
+        print("[Summarizer Agent] Upstream research contained an error — skipping summarization.")
+        return research_text  # Propagate the error message as-is
+
+    # --- Token budget: cap the input to avoid burning the daily quota ---
+    MAX_INPUT_CHARS = 6_000
+    if len(research_text) > MAX_INPUT_CHARS:
+        research_text = research_text[:MAX_INPUT_CHARS] + "\n\n[... truncated for token budget ...]"
     
     # 1. Construct the specialized prompt
     prompt = build_summarizer_prompt(research_text)
@@ -82,7 +92,7 @@ def summarize_research(research_text: str) -> str:
         return summary_result
     except Exception as e:
         print(f"[Summarizer Agent Error] Failed to generate summary. Details: {str(e)}")
-        return f"Error generating summary: {str(e)}"
+        return f"⚠️ **Summarizer Agent Error:** {str(e)}"
 
 # ==========================================
 # Debug/Testing Block

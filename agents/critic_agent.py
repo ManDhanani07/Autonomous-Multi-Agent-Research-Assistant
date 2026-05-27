@@ -24,9 +24,8 @@ Your core responsibilities:
 2. Identify missing topics, concepts, or industry applications.
 3. Find weak sections (e.g., shallow explanations, vague transitions).
 4. Suggest technical improvements for a stronger structure.
-5. Analyze clarity, readability, and professional tone.
-6. Provide an objective score out of 10 with a brief justification.
-7. Do NOT hallucinate. Be objective, highly critical, yet constructive.
+5. Provide an objective score out of 10 (use floats, e.g., 7.5).
+6. Do NOT hallucinate. Be objective, highly critical, yet constructive.
 
 Here is the Executive Summary:
 <summary>
@@ -38,36 +37,36 @@ Here is the Full Research Report:
 {research_text}
 </research>
 
-Please generate your critique STRICTLY following the format below. Use markdown headers:
+Please generate your critique STRICTLY as a valid JSON object. Do NOT wrap it in markdown code blocks like ```json. Output ONLY the raw JSON object.
+Use the following exact schema:
 
-# AI Critic Analysis
-
-## Overall Research Quality
-[Evaluate depth, clarity, completeness, technical quality, and professionalism]
-
-## Missing Topics
-[Identify missing concepts, ignored trends, missing industry applications, and absent technical details]
-
-## Weak Sections
-[Find shallow explanations, repetitive content, vague sections, poor transitions]
-
-## Technical Improvements
-[Suggest deeper technical analysis, better examples, stronger structure, and improved research logic]
-
-## Clarity Evaluation
-[Analyze readability, formatting, organization, and professional tone]
-
-## Suggested Enhancements
-[Provide actionable recommendations, future additions, and advanced improvements]
-
-## Final Review Score
-[Generate a score out of 10 and provide a brief justification]
-
-Ensure your tone is objective, professional, and analytical. Only output the requested sections. Do not include any conversational filler text.
+{{
+  "score": <float between 1.0 and 10.0>,
+  "strengths": [
+    "<string>",
+    "<string>"
+  ],
+  "weaknesses": [
+    "<string>",
+    "<string>"
+  ],
+  "missing_topics": [
+    "<string>",
+    "<string>"
+  ],
+  "improvement_suggestions": [
+    "<string>",
+    "<string>"
+  ],
+  "clarity_evaluation": "<string detailed analysis of readability and professional tone>"
+}}
 """
     return prompt
 
-def critique_research(research_text: str, summary_text: str) -> str:
+import json
+import re
+
+def critique_research(research_text: str, summary_text: str) -> dict:
     """
     Main execution function for the Critic Agent.
     
@@ -76,21 +75,45 @@ def critique_research(research_text: str, summary_text: str) -> str:
         summary_text (str): The executive summary.
         
     Returns:
-        str: The structured, concise markdown critique.
+        dict: The structured JSON critique. If an error occurs, returns a dict with 'error'.
     """
     print("[Critic Agent] Initializing critique of research report and summary...")
+
+    # --- Guard: propagate upstream errors cleanly without wasting tokens ---
+    if research_text.startswith("⚠️") or summary_text.startswith("⚠️"):
+        print("[Critic Agent] Upstream agent error detected — skipping critique.")
+        error_msg = research_text if research_text.startswith("⚠️") else summary_text
+        return {"error": error_msg}
+
+    # --- Token budget: cap both inputs to avoid exceeding the daily quota ---
+    MAX_RESEARCH_CHARS = 4_000
+    MAX_SUMMARY_CHARS  = 2_000
+    if len(research_text) > MAX_RESEARCH_CHARS:
+        research_text = research_text[:MAX_RESEARCH_CHARS] + "\n\n[... truncated for token budget ...]"
+    if len(summary_text) > MAX_SUMMARY_CHARS:
+        summary_text = summary_text[:MAX_SUMMARY_CHARS] + "\n\n[... truncated for token budget ...]"
     
     # 1. Construct the specialized prompt
     prompt = build_critic_prompt(research_text, summary_text)
     
     # 2. Call the LLM via our centralized Groq client
     try:
-        critique_result = ask_groq(prompt)
-        print("[Critic Agent] Critique successfully generated.")
-        return critique_result
+        critique_result_str = ask_groq(prompt).strip()
+        
+        # Clean up any potential markdown code blocks the LLM might have output despite instructions
+        critique_result_str = re.sub(r"^```json\s*", "", critique_result_str)
+        critique_result_str = re.sub(r"^```\s*", "", critique_result_str)
+        critique_result_str = re.sub(r"```$", "", critique_result_str).strip()
+        
+        critique_json = json.loads(critique_result_str)
+        print(f"[Critic Agent] Critique successfully generated. Score: {critique_json.get('score', 'N/A')}/10")
+        return critique_json
+    except json.JSONDecodeError as e:
+        print(f"[Critic Agent Error] Failed to parse JSON. Raw output: {critique_result_str[:200]}...")
+        return {"error": f"Failed to parse JSON critique: {str(e)}"}
     except Exception as e:
         print(f"[Critic Agent Error] Failed to generate critique. Details: {str(e)}")
-        return f"Error generating critique: {str(e)}"
+        return {"error": f"⚠️ **Critic Agent Error:** {str(e)}"}
 
 # ==========================================
 # Debug/Testing Block

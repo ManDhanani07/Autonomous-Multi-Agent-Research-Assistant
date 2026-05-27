@@ -51,22 +51,16 @@ def initialize_chroma():
         
     client = get_chroma_client()
     
-    # We use sentence-transformers to convert text to vectors.
-    # 'all-MiniLM-L6-v2' is a fast and lightweight model perfect for our needs.
-    try:
-        import sentence_transformers
-    except ImportError:
-        pass
-        
+    # We use Chroma's default embedding function which uses 'all-MiniLM-L6-v2'
+    # under the hood, but runs it via ONNX Runtime instead of PyTorch.
+    # This is massively faster for CPU execution during both RAG retrieval and saving.
     from chromadb.utils import embedding_functions
-    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
+    fast_ef = embedding_functions.DefaultEmbeddingFunction()
     
     # Get or create the collection named "research_memory"
     _cached_collection = client.get_or_create_collection(
         name="research_memory",
-        embedding_function=sentence_transformer_ef,
+        embedding_function=fast_ef,
         metadata={"hnsw:space": "cosine"} # Cosine similarity measures the angle between vectors (meaning)
     )
     
@@ -165,4 +159,134 @@ def get_all_memories():
         
     except Exception as e:
         print(f"[ChromaDB Error] Failed to retrieve all memories: {e}")
+        return []
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  RAG RETRIEVAL LAYER  —  added to support the full RAG pipeline
+#  The functions below are the production-grade retrieval interface.
+#  They co-exist alongside the original storage functions above.
+# ═══════════════════════════════════════════════════════════════════
+
+def initialize_collection():
+    """
+    Public alias for initialize_chroma().
+
+    Returns the ChromaDB collection with the sentence-transformer embedding
+    function already attached. Use this as the clean entry-point for any
+    code that needs direct collection access.
+
+    Returns:
+        chromadb.Collection: The 'research_memory' collection, ready to use.
+    """
+    return initialize_chroma()
+
+
+def add_research_memory(doc_id: str, document_text: str, metadata: dict):
+    """
+    Enhanced wrapper for store_research_memory() with richer logging.
+
+    Saves a vectorized research document into ChromaDB. The embedding function
+    automatically converts document_text into a semantic vector before storage.
+
+    Args:
+        doc_id        (str):  Unique identifier for this memory entry.
+        document_text (str):  Full text to embed and store.
+        metadata      (dict): Structured metadata (topic, timestamp, type, etc.)
+    """
+    print(f"[Memory Storage] Encoding and archiving memory: {doc_id}")
+    store_research_memory(doc_id=doc_id, document_text=document_text, metadata=metadata)
+
+
+def retrieve_similar_research(query: str, n_results: int = 3,
+                               min_similarity: float = 0.20) -> list[dict]:
+    """
+    RAG Retrieval Core — finds the top-N semantically similar research records.
+
+    How it works:
+      1. The query string is embedded by the same sentence-transformer model
+         used during storage, producing a 384-dimensional vector.
+      2. ChromaDB performs an approximate nearest-neighbour search using HNSW
+         with cosine similarity as the distance metric.
+      3. Results are ranked by similarity score and filtered by min_similarity.
+
+    Cosine distance → similarity conversion:
+      ChromaDB with hnsw:space=cosine stores distances in [0, 2].
+      distance 0 → identical   (similarity 1.00 = 100 %)
+      distance 1 → orthogonal  (similarity 0.00 =   0 %)
+      distance 2 → opposite    (similarity capped at 0)
+      Formula: similarity = max(0.0, 1.0 - distance)
+
+    Args:
+        query          (str):   The new research topic or question.
+        n_results      (int):   Maximum number of memories to retrieve (default 3).
+        min_similarity (float): Minimum similarity threshold 0–1 (default 0.20).
+                                Results below this are discarded as noise.
+
+    Returns:
+        list[dict]: Each dict contains:
+            - 'id'              (str)   Memory UUID
+            - 'topic'           (str)   Original research topic
+            - 'document'        (str)   Full stored text (truncated for context)
+            - 'metadata'        (dict)  All stored metadata fields
+            - 'similarity_score'(float) 0.0–1.0 similarity to the query
+            - 'similarity_pct'  (str)   Human-readable percentage e.g. "87.3%"
+            - 'distance'        (float) Raw ChromaDB cosine distance
+    """
+    print(f"[Memory Retrieval] Searching semantic memory for: '{query}'")
+
+    try:
+        collection = initialize_chroma()
+
+        # Guard: ChromaDB errors if n_results > collection size
+        total_docs = collection.count()
+        if total_docs == 0:
+            print("[Memory Retrieval] Memory bank is empty — no past research found.")
+            return []
+
+        actual_n = min(n_results, total_docs)
+
+        # Perform the semantic search
+        results = collection.query(
+            query_texts=[query],
+            n_results=actual_n,
+            include=["documents", "metadatas", "distances"]
+        )
+
+        retrieved = []
+
+        if not results or not results.get("documents") or not results["documents"][0]:
+            print("[Memory Retrieval] No results returned from ChromaDB.")
+            return []
+
+        for i in range(len(results["documents"][0])):
+            raw_distance = results["distances"][0][i] if results.get("distances") else 1.0
+            similarity   = max(0.0, round(1.0 - raw_distance, 4))
+
+            # Filter out memories that are not relevant enough
+            if similarity < min_similarity:
+                continue
+
+            metadata = results["metadatas"][0][i] if results.get("metadatas") else {}
+            topic    = metadata.get("topic", "Unknown Topic")
+
+            retrieved.append({
+                "id":              results["ids"][0][i],
+                "topic":           topic,
+                "document":        results["documents"][0][i],
+                "metadata":        metadata,
+                "similarity_score": similarity,
+                "similarity_pct":  f"{similarity * 100:.1f}%",
+                "distance":        raw_distance,
+            })
+
+        # Sort by similarity descending (best match first)
+        retrieved.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+        print(f"[Memory Retrieval] Found {len(retrieved)} relevant memories "
+              f"(threshold >= {min_similarity * 100:.0f}%).")
+        return retrieved
+
+    except Exception as e:
+        print(f"[Memory Retrieval Error] Semantic search failed: {e}")
         return []

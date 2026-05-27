@@ -6,19 +6,26 @@ import threading
 @st.cache_resource
 def _prewarm_chromadb():
     """
-    Spawns a daemon background thread to import and initialize ChromaDB.
-    This ensures that when a user first navigates to the AI Memory Bank,
-    the heavy imports and client connection are already loaded and cached.
+    Spawns a daemon background thread that fully initializes ChromaDB AND
+    loads the sentence-transformers embedding model into memory at startup.
+
+    Previously only get_chroma_client() was called, which skipped loading the
+    'all-MiniLM-L6-v2' model weights (~103 tensors). That meant the first
+    memory save was slow because it had to load the model on-demand.
+    Now initialize_chroma() is called instead, which loads everything up front.
     """
     def warm():
         try:
             print("[*] Background ChromaDB pre-warming thread started...")
-            from memory.chroma_store import get_chroma_client
-            get_chroma_client()
+            # initialize_chroma() loads BOTH the ChromaDB client AND the
+            # sentence-transformers embedding model — eliminating the delay
+            # that previously appeared during the first memory save.
+            from memory.chroma_store import initialize_chroma
+            initialize_chroma()
             print("[*] Background ChromaDB pre-warming completed successfully.")
         except Exception as e:
             print(f"[*] Background ChromaDB pre-warming error: {e}")
-            
+
     thread = threading.Thread(target=warm, daemon=True)
     thread.start()
 
