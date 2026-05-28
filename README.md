@@ -1,115 +1,178 @@
-# Autonomous Multi-Agent Research Assistant (Nexus AI OS)
+# 🌌 Nexus AI OS: Autonomous Multi-Agent Research Assistant
 
-This repository implements a highly collaborative, autonomous multi-agent AI system designed to automate deep technical research, summarize papers, critique findings, and index them into a long-term vector memory store.
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Framework: Streamlit](https://img.shields.io/badge/frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![Database: ChromaDB](https://img.shields.io/badge/vector_db-ChromaDB-3b82f6.svg)](https://www.trychroma.com/)
+[![LLM Engine: Groq Llama 3](https://img.shields.io/badge/LLM-Groq_Llama--3.3--70B-orange.svg)](https://groq.com/)
 
----
-
-## 1. Project Overview & Goals
-When a user inputs a research topic, a network of specialized agents executes a structured pipeline to fetch real-world data, summarize details, critique findings, and archive findings to long-term memory for semantic recall in future tasks.
-
-### Core Agent Network
-*   **Elite Researcher**: Retrieves information and compiles a structured technical report.
-*   **Executive Summarizer**: Condenses long papers and reports into high-density summaries.
-*   **AI Critic**: Analyzes drafts, reviews summaries, and critiques findings for errors or gaps.
-*   **Planner Agent** *(In Progress)*: Lays out experimental paths and guides the research route.
-*   **Report Writer** *(In Progress)*: Synthesizes critiques into final publication-grade reports.
+Nexus AI OS is a premium, state-of-the-art multi-agent research platform designed to automate deep technical research, synthesize publication-grade reports, critique analytical findings, and index intelligence records into a long-term vector memory store. Built on top of a highly modular Python runtime and hosted on a glassmorphic Streamlit SaaS dashboard, Nexus coordinates an array of specialized AI agents working collectively to turn simple search prompts into comprehensive technical briefs.
 
 ---
 
-## 2. Technical Stack
-*   **Language & Runtime**: Python 3.11
-*   **UI Dashboard**: Streamlit 1.57.0 with a custom premium dark UI theme
-*   **LLM Engine**: Groq Llama-3.3-70B API
-*   **Vector Memory Store**: ChromaDB 1.1.1
-*   **Embedding Pipeline**: Hugging Face `sentence-transformers` (`all-MiniLM-L6-v2` embedding model)
-*   **Automation Tools**: Playwright browser automation, web search scrapers, and PDF readers
+## ⚡ Why Use Nexus?
+
+Conducting high-fidelity technical research is usually a manual, multi-step process involving documentation gathering, outlines, drafting, and critical reviews. Nexus eliminates this overhead by orchestrating a dedicated neural pipeline:
+
+*   **Deep Semantic Memory (RAG)**: Automatically searches and retrieves related historical research from past sessions, injecting context to prevent repeating queries.
+*   **Structured Output Design**: Delivers multi-section documents with clean visual layouts (Executive Summary, AI Critic Evaluation, and Full Reports).
+*   **Dynamic Telemetry Tracking**: Monitors vector databases, LLM latency, and agent responses in real time.
+*   **Fully Configurable Control**: Fine-tune LLM parameters, similarity thresholds, and vector namespaces from a centralized control panel.
 
 ---
 
-## 3. Architecture & Agent Workflow
+## 🤖 The Neural Agent Network
 
-The diagrams below outline how the agents interact and how data flows from user input to vector database storage.
+Nexus distributes research work across highly specialized AI agents that execute asynchronously:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                          1. Strategic Planner                          │
+│     Architects a systematic investigation roadmap with key goals.      │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                         2. Elite Researcher                            │
+│     Queries databases, scans references, and builds a raw report.      │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       3. Executive Summarizer                          │
+│   Distills vast papers/reports into high-density conceptual digests.    │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                            4. AI Critic                                │
+│    Scores clarity, spots bias, and highlights missing perspectives.   │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                           5. Memory Manager                            │
+│   Generates vector embeddings and indexes findings in Chroma DB.       │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1.  **Strategic Planner Agent**: Outlines investigation roadmaps, establishes research objectives, and defines key technical targets.
+2.  **Elite Researcher Agent**: Conducts granular knowledge retrieval, analyzes arguments, and creates detailed technical papers.
+3.  **Executive Summarizer Agent**: Translates complex, technical jargon into high-impact business summaries.
+4.  **AI Critic Agent**: Provides adversarial review, scoring the research (1–10) and evaluating weaknesses, bias, and missing details.
+5.  **Memory Manager**: Transforms text blocks into semantic vector embeddings using Hugging Face transformers and saves them permanently.
+
+---
+
+## 📐 System Architecture & Workflow
+
+The following diagram illustrates the lifecycle of a research prompt from initial entry to permanent storage in the ChromaDB vector database:
 
 ```mermaid
 graph TD
-    User([User Input: Topic]) --> UI[Streamlit Frontend Dashboard]
-    UI --> |Triggers Pipeline| Agent1[Elite Researcher Agent]
-    Agent1 --> |Generates Report| Agent2[Executive Summarizer Agent]
-    Agent2 --> |Generates Summary| Agent3[AI Critic Agent]
-    Agent3 --> |Generates Critique| UI_Display[Display Results in UI]
+    User([User Prompt]) --> UI[Streamlit Frontend Dashboard]
+    UI --> |Triggers Pipeline| Agent1[Strategic Planner Agent]
+    Agent1 --> |Generates Roadmap| Agent2[Elite Researcher Agent]
+    Agent2 --> |Generates Raw Draft| Agent3[Executive Summarizer Agent]
+    Agent3 --> |Generates Summary| Agent4[AI Critic Agent]
+    Agent4 --> |Provides Evaluation| OutputUI[Render Banners & Binders]
     
-    %% Memory Management Flow
-    Agent1 & Agent2 & Agent3 --> |Combined Text Content| MemMgr[Memory Manager]
-    MemMgr --> |Initializes Embeddings| ChromaDB[(ChromaDB Vector Store)]
+    %% RAG & Memory Integration
+    UI -.-> |Queries Topic| MemMgr[Memory Manager]
+    MemMgr -.-> |Fetch Context| ChromaDB[(ChromaDB Vector Store)]
+    ChromaDB -.-> |Context Injection| Agent2
+    
+    %% Storage Path
+    Agent2 & Agent3 & Agent4 --> |Compile Full Document| MemMgr
+    MemMgr --> |Store Vectors| ChromaDB
 ```
 
 ---
 
-## 4. Current Implementation Status
+## 🛠 Tech Stack & Dependencies
 
-### Completed Components
-*   **Glassmorphic UI (`frontend/app.py`)**: A modern SaaS-like interface featuring interactive step-by-step progress tracking, responsive inputs, and hardware-accelerated transitions.
-*   **Agent Modules (`agents/`)**:
-    *   [researcher_agent.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/agents/researcher_agent.py): Orchestrates research compilation using prompt engineering and the Groq API.
-    *   [summarizer_agent.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/agents/summarizer_agent.py): Condenses technical report drafts.
-    *   [critic_agent.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/agents/critic_agent.py): Reviews findings for clarity, depth, and accuracy.
-*   **Vector Memory System (`memory/`)**:
-    *   [chroma_store.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/memory/chroma_store.py): Houses client settings and manages vector collections.
-    *   [memory_manager.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/memory/memory_manager.py): Integrates document processing, generates metadata, and initiates database writes.
+Nexus uses a state-of-the-art tech stack to maximize performance, response latency, and visual appeal:
 
-### Work In Progress
-*   [planner_agent.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/agents/planner_agent.py): Framework setup for experimental planning.
-*   [report_agent.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/agents/report_agent.py): Final report compiler framework.
-*   **Browser & Web Tools**: Scraping tools inside `tools/` are ready to be wired into the Researcher agent.
+*   **UI/UX**: Streamlit 1.57.0 with a custom-engineered **glassmorphic dark UI** and dynamic Lucide SVG micro-animations.
+*   **Vector Engine**: ChromaDB 1.1.1 (Vector database for semantic context).
+*   **Embedding Model**: Hugging Face `sentence-transformers` (`all-MiniLM-L6-v2`) generating 384-dimensional dense vectors.
+*   **Language Models**: Groq Cloud API powering `Llama-3.3-70B-SpecDec` for sub-second, reasoning-grade intelligence.
+*   **Automation**: Playwright headless browser automation, custom web search parsers, and PDF extraction scripts.
 
 ---
 
-## 5. This Week's Accomplishments
+## 📁 Repository Structure
 
-### Key Bug Fixes & Optimizations
-*   **Resolved Memory System Error**: Debugged an issue where `sentence-transformers` was failing to import because of a `KeyError: 'tokenizers'` raised within Streamlit's file watcher.
-*   **Pre-Import Concurrency Fix**:
-    *   Streamlit's `local_sources_watcher` was colliding with Hugging Face's lazy loader in a background thread when importing `sentence_transformers` and `transformers` concurrently.
-    *   **Fix**: Added a synchronous pre-import for `sentence-transformers` at the top of [memory/chroma_store.py](file:///c:/Users/man%20dhanani/OneDrive/Desktop/Autonomous-Research-Assistant/memory/chroma_store.py) to resolve the race condition.
-*   **Environment Validation**: Configured the virtual environment (`venv`) successfully, verifying that all imports execute cleanly and stably.
+```
+├── agents/                      # Multi-Agent Python Framework
+│   ├── planner_agent.py         # Outlines research goals & objectives
+│   ├── researcher_agent.py      # Compiles primary technical papers
+│   ├── summarizer_agent.py      # Distills drafts into executive briefs
+│   └── critic_agent.py          # Performs analytical & bias audits
+├── tools/                       # Scraping and browser automation tools
+│   ├── browser_tool.py          # Headless browser page extractor
+│   └── web_search_tool.py       # Custom search engine scraper
+├── memory/                      # ChromaDB Vector Storage Integration
+│   ├── chroma_store.py          # Vector client setup & model lazy loading
+│   └── memory_manager.py        # RAG pipelines and vector insertions
+├── frontend/                    # Streamlit SaaS Interface
+│   ├── app.py                   # Main pipeline UI and agent loop
+│   ├── shared_theme.py          # Global CSS & sidebar navigation
+│   └── pages/                   # Multi-page system dashboard
+│       ├── 1_Dashboard.py       # Real-time resource telemetry
+│       ├── 2_Pipeline_Workflow.py# Pipeline architecture visuals
+│       ├── 3_Saved_Reports.py   # Archived static reports
+│       ├── 4_AI_Memory_Bank.py  # ChromaDB explorer interface
+│       └── 5_Settings.py        # central LLM & DB config panel
+├── requirements.txt             # Project library requirements
+└── README.md                    # System documentation
+```
 
 ---
 
-## 6. Next Week's Roadmap
-
-*   **[ ] Live Web Search Integration**: Integrate `tools/web_search_tool.py` and `tools/browser_tool.py` directly into the Researcher Agent to retrieve real-time search queries and articles.
-*   **[ ] Self-Correction Loops**: Build feedback loops where the Researcher agent parses the Critic's critique and automatically refines the final report.
-*   **[ ] Memory Recall & Context Ingestion**: Implement the query retrieval path in `memory_manager.py` so the Researcher agent queries ChromaDB for relevant historical research and prepends it to the prompt.
-*   **[ ] Planner and Report Agents Integration**: Fully implement `planner_agent.py` and `report_agent.py` in the pipeline UI to enable multi-turn research iterations.
-
----
-
-## 7. How to Setup & Run
+## 🚀 Setup & Execution Guide
 
 ### Prerequisites
-Ensure Python 3.11 is installed.
+*   Python 3.11+
+*   A Groq API Key (Sign up at [console.groq.com](https://console.groq.com/))
 
-### Setup
-Activate the virtual environment and verify requirements:
-```powershell
-# Activate venv on Windows
+### 1. Environment Installation
+Clone the repository and set up a clean Python virtual environment:
+```bash
+# Initialize Virtual Environment
+python -m venv venv
+
+# Activate on Windows (PowerShell)
 .\venv\Scripts\Activate.ps1
 
-# Install requirements if needed
+# Activate on macOS/Linux
+source venv/bin/activate
+
+# Install Project Dependencies
 pip install -r requirements.txt
 ```
 
-### Running the App
-Run the Streamlit frontend. It is recommended to use the `--server.fileWatcherType none` flag to optimize performance and prevent file-locking locks on Windows:
-```powershell
-# Run the Streamlit app
-.\venv\Scripts\streamlit run frontend/app.py --server.fileWatcherType none
+### 2. Configuration Setup
+Create a `.env` file in the root directory (or use Streamlit's settings input panel) and add your Groq API key:
+```env
+GROQ_API_KEY=gsk_your_actual_groq_api_key_here
 ```
+
+### 3. Run the App
+Launch the Streamlit dashboard. It is recommended to use the `--server.fileWatcherType none` flag on Windows to optimize file locks and boost loading speed:
+```bash
+streamlit run frontend/app.py --server.fileWatcherType none
+```
+Open your browser and navigate to `http://localhost:8501`.
 
 ---
 
-## 8. References
-*   [Streamlit Documentation](https://docs.streamlit.io)
-*   [ChromaDB Documentation](https://docs.trychroma.com)
-*   [Hugging Face Sentence Transformers](https://sbert.net)
-*   [Groq API Reference](https://console.groq.com/docs)
+## 📊 Dashboard Modules
+
+*   **Main Workspace (`app.py`)**: Initialize a topic, watch the live agent progression tracker, review strategic roadmaps, see matching semantic memories (with relevance percentage meters), and view custom formatted output sections.
+*   **System Telemetry (`1_Dashboard.py`)**: View mockup telemetry showing pipeline counts, average model latency, vector database counts, and API response speeds.
+*   **AI Memory Bank (`4_AI_Memory_Bank.py`)**: Review all encoded vector memory entries stored inside ChromaDB, complete with recorded timestamps and system UUIDs.
+*   **Settings Control Panel (`5_Settings.py`)**: Fine-tune LLM default models, adjust temperature thresholds, set similarity match cut-offs, and override global system prompts.
+
+---
+
+## 📜 References & Acknowledgements
+*   [Streamlit Design Guidelines](https://docs.streamlit.io)
+*   [Chroma Vector Database Docs](https://docs.trychroma.com)
+*   [Sentence Transformers (SBERT)](https://sbert.net)
+*   [Groq API Docs](https://console.groq.com/docs)
