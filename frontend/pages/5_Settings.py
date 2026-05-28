@@ -55,4 +55,13 @@ with st.container():
     st.slider("Retrieval Context Threshold (Similarity Limit)", 0.0, 2.0, 1.1, 0.05)
     st.text_input("Database Path Override", value="memory/chroma_db", disabled=True)
 
-st.success("Configurations saved successfully to active Streamlit workspace.")
+st.markdown(
+    "<div style='display:flex;align-items:center;gap:12px;"
+    "padding:16px 20px;margin-top:20px;margin-bottom:20px;"
+    "background:rgba(16,185,129,0.08);color:#34d399;"
+    "border-radius:10px;border:1px solid rgba(16,185,129,0.25);font-weight:600;'>"
+    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>"
+    "<span>Configurations saved successfully to active Streamlit workspace.</span>"
+    "</div>",
+    unsafe_allow_html=True
+)

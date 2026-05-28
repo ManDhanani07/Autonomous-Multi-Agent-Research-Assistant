@@ -139,8 +139,9 @@ Powerful, synthesised concluding paragraph referencing both memory and web data.
 - Use clean, visually appealing Markdown formatting.
 - Tone: objective, academic yet accessible, highly professional.
 - Do NOT include conversational filler. Begin directly with the Markdown title.
-- Where relevant, cite sources inline: [Source Name](https://example.com).
-- The ## 8. References section MUST use the exact URLs provided — do not invent URLs.
+- STRICT LINK RULE: Do NOT invent, fabricate, or guess any URLs or hyperlinks. NEVER write [text](https://example.com) or any placeholder links.
+- STRICT LINK RULE: Only cite sources that were explicitly provided in the web search results above. If you want to reference a source, write its plain URL directly (e.g. https://actual-url.com) — do NOT wrap it in markdown link syntax.
+- The ## 8. References section MUST use ONLY the exact URLs provided in the source list — do not modify or invent any URL.
 - If memory context was provided, explicitly connect insights across research sessions.
 """
     return prompt.strip()

@@ -502,17 +502,20 @@ h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { display: none !important; }
 [data-testid="InputInstructions"] { display: none !important; }
 
 /* Hide invisible iframe containers for theme/font script injections to prevent layout shifting */
-iframe[height="0"], 
-iframe[height="1"], 
-div[data-testid="stHtml"]:has(iframe[height="0"]),
-div[data-testid="stHtml"]:has(iframe[height="1"]),
-div[data-testid="stIframe"]:has(iframe[height="0"]),
-div[data-testid="stIframe"]:has(iframe[height="1"]) {
+iframe,
+div[data-testid="stHtml"]:has(iframe),
+div[data-testid="stIframe"],
+div[data-testid="stIframe"] iframe,
+div[data-testid="element-container"]:has(iframe),
+div[data-testid="element-container"]:has(div[data-testid="stIframe"]) {
     display: none !important;
     height: 0px !important;
+    width: 0px !important;
     margin: 0px !important;
     padding: 0px !important;
     border: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 """
 

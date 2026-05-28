@@ -37,6 +37,28 @@ ICON_RESEARCHER = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 ICON_SUMMARIZER = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>'
 ICON_CRITIC = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/></svg>'
 ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+ICON_PLANNER = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg>'
+ICON_RAG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>'
+ICON_CORRECTION = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>'
+ICON_VERIFIED = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>'
+ICON_SPARKLES = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/></svg>'
+ICON_DRAFT = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>'
+ICON_REPORT = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
+
+
+# ==========================================
+# Helper: Remove hallucinated markdown links
+# ==========================================
+def strip_fake_links(text: str) -> str:
+    """
+    Removes all markdown hyperlinks [text](url) from the report output.
+    Only keeps the link text so no fake/invented URLs are clickable.
+    Real source URLs in the References section are kept as plain text.
+    """
+    import re
+    # Replace [link text](url) with just the link text
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    return text
 
 
 # ==========================================
@@ -114,7 +136,7 @@ def render_workflow_step(current_step):
 
 <!-- Step 2: Planner -->
 <div class="workflow-card {s2}">
-<div class="icon-box">🗺️</div>
+<div class="icon-box">{ICON_PLANNER}</div>
 <div class="content">
 <div class="title">Phase 1: Strategic Planner Agent</div>
 <div class="status">{t2}</div>
@@ -265,19 +287,46 @@ if getattr(st.session_state, 'running', False):
 
         with output_ui.container():
             if summary_is_error:
-                st.error("⚠️ Research pipeline encountered an API quota issue.")
+                st.markdown(
+                    "<div style='display:flex;align-items:center;gap:12px;"
+                    "padding:16px 20px;margin-bottom:24px;"
+                    "background:rgba(239,68,68,0.08);color:#fca5a5;"
+                    "border-radius:10px;border:1px solid rgba(239,68,68,0.25);font-weight:600;'>"
+                    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#fca5a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>"
+                    "<span>Research pipeline encountered an API quota issue.</span>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
                 st.markdown(clean_summary)
             else:
-                st.success("✅ Memory Saved Successfully")
-                st.success("Autonomous Research Pipeline Complete.")
+                st.markdown(
+                    "<div style='display:flex;align-items:center;gap:12px;"
+                    "padding:16px 20px;margin-bottom:14px;"
+                    "background:rgba(16,185,129,0.08);color:#34d399;"
+                    "border-radius:10px;border:1px solid rgba(16,185,129,0.25);font-weight:600;'>"
+                    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>"
+                    "<span>Memory Saved Successfully</span>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    "<div style='display:flex;align-items:center;gap:12px;"
+                    "padding:16px 20px;margin-bottom:24px;"
+                    "background:rgba(16,185,129,0.08);color:#34d399;"
+                    "border-radius:10px;border:1px solid rgba(16,185,129,0.25);font-weight:600;'>"
+                    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>"
+                    "<span>Autonomous Research Pipeline Complete.</span>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
                 
                 # ── Planner Roadmap Panel ──────────────────────────────────
                 plan = getattr(st.session_state, "planner_roadmap", None)
                 if plan:
                     st.markdown(
-                        "<h3 style='margin-top: 30px; margin-bottom: 12px; color: #a855f7; "
-                        "font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
-                        "🗺️ Planner Agent Roadmap</h3>",
+                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #a855f7; "
+                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
+                        f"<span style='color:#a855f7'>{ICON_PLANNER}</span> Planner Agent Roadmap</h3>",
                         unsafe_allow_html=True
                     )
                     
@@ -286,42 +335,88 @@ if getattr(st.session_state, 'running', False):
                         
                         colA, colB = st.columns(2)
                         with colA:
-                            st.markdown("#### 🎯 Research Objectives")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:8px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#6366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 8v4'/><path d='M12 16h.01'/></svg>"
+                                " Research Objectives</h4>",
+                                unsafe_allow_html=True
+                            )
                             for obj in plan.get('objectives', []):
                                 st.markdown(f"- {obj}")
-                            
-                            st.markdown("#### 📑 Core Subtopics")
+
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='M16 13H8'/><path d='M16 17H8'/><path d='M10 9H8'/></svg>"
+                                " Core Subtopics</h4>",
+                                unsafe_allow_html=True
+                            )
                             for sub in plan.get('subtopics', []):
                                 st.markdown(f"- {sub}")
 
-                            st.markdown("#### ⚙️ Technical Areas")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='3'/><path d='M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83'/></svg>"
+                                " Technical Areas</h4>",
+                                unsafe_allow_html=True
+                            )
                             for tech in plan.get('technical_areas', []):
                                 st.markdown(f"- {tech}")
 
-                            st.markdown("#### 🔍 Recommended Focus Areas")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#06b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.3-4.3'/></svg>"
+                                " Recommended Focus Areas</h4>",
+                                unsafe_allow_html=True
+                            )
                             for focus in plan.get('focus_areas', []):
                                 st.markdown(f"- {focus}")
 
-                            st.markdown("#### 🚀 Future Investigation Opportunities")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ec4899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='m12 5 7 7-7 7'/></svg>"
+                                " Future Investigation Opportunities</h4>",
+                                unsafe_allow_html=True
+                            )
                             for opp in plan.get('future_opportunities', []):
                                 st.markdown(f"- {opp}")
-                        
+
                         with colB:
-                            st.markdown("#### 🗺️ Investigation Roadmap")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:8px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#a855f7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z'/><path d='M9 3v15'/><path d='M15 6v15'/></svg>"
+                                " Investigation Roadmap</h4>",
+                                unsafe_allow_html=True
+                            )
                             for phase in plan.get('roadmap', []):
                                 st.markdown(f"- {phase}")
 
-                            st.markdown("#### 🔄 Suggested Workflow Order")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'/><path d='M21 3v5h-5'/><path d='M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'/><path d='M8 16H3v5'/></svg>"
+                                " Suggested Workflow Order</h4>",
+                                unsafe_allow_html=True
+                            )
                             for step in plan.get('suggested_order', []):
                                 st.markdown(f"1. {step}")
-                            
-                            st.markdown("#### ❓ Critical Questions")
+
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#38bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><path d='M12 17h.01'/></svg>"
+                                " Critical Questions</h4>",
+                                unsafe_allow_html=True
+                            )
                             for q in plan.get('critical_questions', []):
                                 st.markdown(f"- {q}")
 
-                            st.markdown("#### ⚠️ Potential Challenges")
+                            st.markdown(
+                                "<h4 style='display:flex;align-items:center;gap:8px;color:#ffffff;margin-top:16px;margin-bottom:6px;'>"
+                                "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f97316' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z'/><path d='M12 9v4'/><path d='M12 17h.01'/></svg>"
+                                " Potential Challenges</h4>",
+                                unsafe_allow_html=True
+                            )
                             for challenge in plan.get('potential_challenges', []):
                                 st.markdown(f"- {challenge}")
+
 
                 # ── Self-Correction Badge & Delta ────────────────────────
                 opt_data = getattr(st.session_state, "optimized_data", None)
@@ -332,7 +427,8 @@ if getattr(st.session_state, 'running', False):
                             <div style='background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(52, 211, 153, 0.05) 100%);
                                         border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; margin-top: 16px; margin-bottom: 24px;'>
                                 <div style='display: flex; align-items: center; gap: 8px; margin-bottom: 8px;'>
-                                    <h4 style='margin: 0; color: #10b981;'>✨ AI Self-Corrected & Optimized</h4>
+                                    <span style='color:#10b981;'>{ICON_SPARKLES}</span>
+                                    <h4 style='margin: 0; color: #10b981;'>AI Self-Corrected &amp; Optimized</h4>
                                 </div>
                                 <p style='margin: 0; color: #a1a1aa; font-size: 0.95rem;'>
                                     The AI iteratively refined this report based on internal critique.<br>
@@ -348,7 +444,8 @@ if getattr(st.session_state, 'running', False):
                             <div style='background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%);
                                         border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-top: 16px; margin-bottom: 24px;'>
                                 <div style='display: flex; align-items: center; gap: 8px; margin-bottom: 8px;'>
-                                    <h4 style='margin: 0; color: #3b82f6;'>🛡️ AI Quality Verified</h4>
+                                    <span style='color:#3b82f6;'>{ICON_VERIFIED}</span>
+                                    <h4 style='margin: 0; color: #3b82f6;'>AI Quality Verified</h4>
                                 </div>
                                 <p style='margin: 0; color: #a1a1aa; font-size: 0.95rem;'>
                                     The AI attempted to self-correct, but determined the original Draft v1 (Score: <strong>{opt_data['original_critique'].get('score')}</strong>) 
@@ -363,9 +460,9 @@ if getattr(st.session_state, 'running', False):
                 retrieved_mems = getattr(st.session_state, "retrieved_memories", [])
                 if retrieved_mems:
                     st.markdown(
-                        "<h3 style='margin-top: 30px; margin-bottom: 12px; color: #34d399; "
-                        "font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
-                        "🧠 RAG Memory Context — Retrieved &amp; Injected</h3>",
+                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #34d399; "
+                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
+                        f"<span style='color:#34d399'>{ICON_RAG}</span> RAG Memory Context — Retrieved &amp; Injected</h3>",
                         unsafe_allow_html=True
                     )
                     st.markdown(
@@ -377,8 +474,8 @@ if getattr(st.session_state, 'running', False):
                     )
 
                     for idx, mem in enumerate(retrieved_mems, start=1):
-                        sim_pct  = mem.get("similarity_pct", "N/A")
-                        sim_val  = mem.get("similarity_score", 0)
+                        sim_pct   = mem.get("similarity_pct", "N/A")
+                        sim_val   = mem.get("similarity_score", 0)
                         mem_topic = mem.get("topic", "Unknown Topic")
                         mem_date  = mem.get("metadata", {}).get("timestamp", "")
 
@@ -396,21 +493,53 @@ if getattr(st.session_state, 'running', False):
                         except Exception:
                             pass
 
-                        with st.expander(f"📁 Memory {idx}: {mem_topic}  ·  {sim_pct} relevance"):
+                        # Single expander with Lucide icon header INSIDE (no duplication)
+                        with st.expander(f"🗂  Memory {idx}  ·  {sim_pct} relevance  —  {mem_topic[:55]}{'...' if len(mem_topic) > 55 else ''}"):
+                            # Rich Lucide icon title row inside
                             st.markdown(
-                                f"<div style='display:flex; gap:12px; margin-bottom:12px; "
-                                f"flex-wrap:wrap;'>"
-                                f"<span style='background:rgba(52,211,153,0.1); color:#34d399; "
-                                f"padding:4px 12px; border-radius:20px; font-size:0.8rem; "
-                                f"border:1px solid rgba(52,211,153,0.3); font-weight:600;'>"
-                                f"🕒 {mem_date}</span>"
-                                f"<span style='background:rgba(99,102,241,0.1); "
-                                f"color:{badge_colour}; padding:4px 12px; border-radius:20px; "
-                                f"font-size:0.8rem; border:1px solid {badge_colour}40; "
-                                f"font-weight:700;'>⚡ Similarity: {sim_pct}</span>"
-                                f"<span style='background:rgba(255,255,255,0.05); color:#71717a; "
-                                f"padding:4px 12px; border-radius:20px; font-size:0.8rem;'>"
-                                f"ID: {mem.get('id','—')}</span>"
+                                f"<div style='display:flex;align-items:center;gap:12px;"
+                                f"padding:12px 16px;margin-bottom:14px;"
+                                f"background:rgba(52,211,153,0.07);"
+                                f"border-radius:10px;border:1px solid rgba(52,211,153,0.18);'>"
+                                # Folder icon
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                                f"<path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/>"
+                                f"</svg>"
+                                f"<div style='flex:1;min-width:0;'>"
+                                f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
+                                f"letter-spacing:0.1em;color:#34d399;'>Memory {idx}</p>"
+                                f"<p style='margin:2px 0 0 0;font-size:0.95rem;font-weight:600;color:#ffffff;"
+                                f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{mem_topic}</p>"
+                                f"</div>"
+                                f"<span style='background:{badge_colour}22;color:{badge_colour};"
+                                f"padding:4px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"font-weight:700;border:1px solid {badge_colour}55;flex-shrink:0;'>{sim_pct}</span>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            # Badge row with Lucide icons
+                            st.markdown(
+                                f"<div style='display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;'>"
+                                # Clock icon badge
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(52,211,153,0.1);color:#34d399;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"border:1px solid rgba(52,211,153,0.3);font-weight:600;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>"
+                                f" {mem_date}</span>"
+                                # Zap icon badge
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(99,102,241,0.1);color:{badge_colour};"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"border:1px solid {badge_colour}40;font-weight:700;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='{badge_colour}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>"
+                                f" Similarity: {sim_pct}</span>"
+                                # ID badge
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(255,255,255,0.05);color:#71717a;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#71717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>"
+                                f" {mem.get('id', '—')}</span>"
                                 f"</div>",
                                 unsafe_allow_html=True
                             )
@@ -421,15 +550,38 @@ if getattr(st.session_state, 'running', False):
                             # Full stored memory content
                             st.markdown(mem.get("document", ""))
 
-                elif not summary_is_error:
-                    st.info("💡 No related past research was found for this topic. "
-                            "This report has been stored and will be retrieved as context for future searches.")
+
+                    st.markdown(
+                        "<div style='display:flex;align-items:center;gap:12px;"
+                        "padding:16px 20px;margin-bottom:24px;"
+                        "background:rgba(59,130,246,0.08);color:#93c5fd;"
+                        "border-radius:10px;border:1px solid rgba(59,130,246,0.25);font-weight:600;'>"
+                        "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#93c5fd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>"
+                        "<span>No related past research was found for this topic. This report has been stored and will be retrieved as context for future searches.</span>"
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
 
                 # ── Executive Summary ────────────────────────────────────
                 st.markdown(
-                    f"<h3 style='margin-top: 30px; margin-bottom: 16px; color: #ffffff; "
-                    f"font-size: 1.5rem; display: flex; align-items: center; gap: 10px;'>"
-                    f"{ICON_SUMMARIZER} Executive Summary</h3>",
+                    f"""
+                    <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
+                                background: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.06) 100%);
+                                border-left: 5px solid #6366f1; border-radius: 12px;'>
+                        <div style='display:flex; align-items:center; gap:14px;'>
+                            <span style='color:#818cf8; flex-shrink:0;'>{ICON_SUMMARIZER}</span>
+                            <div>
+                                <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
+                                          text-transform:uppercase; color:#818cf8;'>Section 1</p>
+                                <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
+                                           background: linear-gradient(90deg, #818cf8, #c084fc);
+                                           -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
+                                    Executive Summary
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
                 st.markdown('<div id="exec-summary-anchor"></div>', unsafe_allow_html=True)
@@ -437,9 +589,24 @@ if getattr(st.session_state, 'running', False):
 
                 # ── AI Critic Analysis ───────────────────────────────────
                 st.markdown(
-                    f"<h3 style='margin-top: 30px; margin-bottom: 16px; color: #ffffff; "
-                    f"font-size: 1.5rem; display: flex; align-items: center; gap: 10px;'>"
-                    f"{ICON_CRITIC} AI Critic Analysis</h3>",
+                    f"""
+                    <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
+                                background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(249,115,22,0.06) 100%);
+                                border-left: 5px solid #f59e0b; border-radius: 12px;'>
+                        <div style='display:flex; align-items:center; gap:14px;'>
+                            <span style='color:#fbbf24; flex-shrink:0;'>{ICON_CRITIC}</span>
+                            <div>
+                                <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
+                                          text-transform:uppercase; color:#fbbf24;'>Section 2</p>
+                                <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
+                                           background: linear-gradient(90deg, #fbbf24, #f97316);
+                                           -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
+                                    AI Critic Analysis
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
                 st.markdown('<div id="critic-anchor"></div>', unsafe_allow_html=True)
@@ -454,17 +621,58 @@ if getattr(st.session_state, 'running', False):
                     st.markdown("<br>", unsafe_allow_html=True)
                     opt_data = getattr(st.session_state, "optimized_data", None)
                     if opt_data and opt_data.get("optimized"):
-                        with st.expander("📄 View Original Draft (v1)"):
+                        # Lucide icon header for Draft v1
+                        st.markdown(
+                            "<div style='display:flex;align-items:center;gap:10px;margin-bottom:4px;'>"
+                            "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='M16 13H8'/><path d='M16 17H8'/><path d='M10 9H8'/></svg>"
+                            "<span style='color:#a1a1aa;font-weight:600;font-size:0.9rem;'>Draft v1 &mdash; Original Report</span>"
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
+                        with st.expander("View Draft v1"):
                             st.markdown('<div style="padding: 10px; opacity: 0.8;">', unsafe_allow_html=True)
-                            st.markdown(opt_data.get("original_report", "Original report not available."))
+                            st.markdown(strip_fake_links(opt_data.get("original_report", "Original report not available.")))
                             st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        with st.expander("✨ View Optimized Final Report (v2)", expanded=True):
+
+                        # Lucide icon header for Draft v2
+                        st.markdown(
+                            "<div style='display:flex;align-items:center;gap:10px;margin-top:16px;margin-bottom:4px;'>"
+                            "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#818cf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z'/></svg>"
+                            "<span style='color:#818cf8;font-weight:600;font-size:0.9rem;'>Draft v2 &mdash; Optimized Final Report</span>"
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
+                        with st.expander("View Draft v2 — Optimized", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            st.markdown(st.session_state.full_research)
+                            st.markdown(strip_fake_links(st.session_state.full_research))
                             st.markdown('</div>', unsafe_allow_html=True)
                     else:
-                        with st.expander("View Full Comprehensive Research Report", expanded=True):
+                        # Lucide icon header for Full Report
+                        st.markdown(
+                            f"""
+                            <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
+                                        background: linear-gradient(135deg, rgba(52,211,153,0.12) 0%, rgba(6,182,212,0.06) 100%);
+                                        border-left: 5px solid #34d399; border-radius: 12px;'>
+                                <div style='display:flex; align-items:center; gap:14px;'>
+                                    <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>
+                                    <div>
+                                        <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
+                                                  text-transform:uppercase; color:#34d399;'>Section 3</p>
+                                        <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
+                                                   background: linear-gradient(90deg, #34d399, #06b6d4);
+                                                   -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
+                                            Full Comprehensive Research Report
+                                        </h2>
+                                    </div>
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        with st.expander("View Full Report", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            st.markdown(st.session_state.full_research)
+                            st.markdown(strip_fake_links(st.session_state.full_research))
                             st.markdown('</div>', unsafe_allow_html=True)
+
+
+

@@ -69,14 +69,49 @@ try:
                 formatted_time = raw_time
             
             # Render each memory as an expander
-            with st.expander(f"📁 {topic}"):
-                st.markdown(f"<div class='memory-tag'>Recorded: {formatted_time}</div>", unsafe_allow_html=True)
+            with st.expander(f"🗂  Memory: {topic[:55]}{'...' if len(topic) > 55 else ''}"):
+                # Rich Lucide icon title row inside (showing full topic)
+                st.markdown(
+                    f"<div style='display:flex;align-items:center;gap:12px;"
+                    f"padding:12px 16px;margin-bottom:14px;"
+                    f"background:rgba(52,211,153,0.07);"
+                    f"border-radius:10px;border:1px solid rgba(52,211,153,0.18);'>"
+                    # Folder icon
+                    f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                    f"<path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/>"
+                    f"</svg>"
+                    f"<div style='flex:1;min-width:0;'>"
+                    f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
+                    f"letter-spacing:0.1em;color:#34d399;'>Encoded Memory Record</p>"
+                    f"<p style='margin:2px 0 0 0;font-size:0.95rem;font-weight:600;color:#ffffff;"
+                    f"line-height:1.4;'>{topic}</p>"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+                
+                # Badge row with Lucide icons
+                st.markdown(
+                    f"<div style='display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;'>"
+                    # Clock icon badge
+                    f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                    f"background:rgba(52,211,153,0.1);color:#34d399;"
+                    f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                    f"border:1px solid rgba(52,211,153,0.3);font-weight:600;'>"
+                    f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>"
+                    f" {formatted_time}</span>"
+                    # ID badge
+                    f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                    f"background:rgba(255,255,255,0.05);color:#71717a;"
+                    f"padding:5px 12px;border-radius:20px;font-size:0.8rem;'>"
+                    f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#71717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>"
+                    f" ID: {mem.get('id', '—')}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
                 
                 # The document contains the combined Summary, Critic, and Full Research from the memory_manager
-                st.markdown("### Raw Vector Data")
                 st.markdown(mem['document'])
-                
-                st.markdown(f"<p style='font-size: 0.8rem; color: #71717a; margin-top: 20px;'>UUID: {mem['id']}</p>", unsafe_allow_html=True)
 
 except Exception as e:
     st.error("Failed to connect to ChromaDB Vector Store. Ensure dependencies are installed and the database isn't locked.")

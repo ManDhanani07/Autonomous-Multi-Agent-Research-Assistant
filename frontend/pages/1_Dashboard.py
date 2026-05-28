@@ -54,4 +54,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.info("System stats are mock telemetry for display purposes. Live telemetry connection is online.")
+st.markdown(
+    "<div style='display:flex;align-items:center;gap:12px;"
+    "padding:16px 20px;margin-top:20px;margin-bottom:20px;"
+    "background:rgba(59,130,246,0.08);color:#93c5fd;"
+    "border-radius:10px;border:1px solid rgba(59,130,246,0.25);font-weight:600;'>"
+    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#93c5fd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>"
+    "<span>System stats are mock telemetry for display purposes. Live telemetry connection is online.</span>"
+    "</div>",
+    unsafe_allow_html=True
+)
