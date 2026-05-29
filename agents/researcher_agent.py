@@ -233,6 +233,19 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         print(f"[Memory Retrieval Error] Could not search memory: {e}")
         memory_context, retrieved_memories = "", []
 
+    # ── STEP 0.8: Query Ingested PDF Documents (RAG) ─────────────────────
+    print(f"\n[PDF Memory Retrieval] Searching ingested documents for: '{topic}'")
+    pdf_context, retrieved_pdf_chunks = "", []
+    try:
+        from tools.pdf_parser_tool import search_pdf_context
+        pdf_context, retrieved_pdf_chunks = search_pdf_context(topic, n_results=5, min_similarity=0.20)
+        if retrieved_pdf_chunks:
+            print(f"[PDF Memory Injection] Context successfully retrieved from {len(retrieved_pdf_chunks)} chunks.")
+        else:
+            print("[PDF Memory Retrieval] No relevant context found in uploaded PDFs.")
+    except Exception as e:
+        print(f"[PDF Memory Retrieval Error] Could not search uploaded PDFs: {e}")
+
     # ── STEP 1: Academic Search ───────────────────────────────────────────
     from tools.academic_search_tool import search_academic_literature, format_academic_context
 
@@ -249,8 +262,23 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         # Generate context from papers
         academic_context = format_academic_context(retrieved_papers)
         
+        # Ingest PDF context if present
+        if pdf_context:
+            academic_context = pdf_context + "\n\n" + academic_context
+            
         # Build source list for the references section
         source_urls = []
+        
+        # Add PDF sources first if relevant
+        seen_pdf_sources = set()
+        for chunk in retrieved_pdf_chunks:
+            meta = chunk.get("metadata", {})
+            file_name = meta.get("source_file", "PDF Document")
+            title = meta.get("title", file_name)
+            if file_name not in seen_pdf_sources:
+                seen_pdf_sources.add(file_name)
+                source_urls.append({"title": f"[PDF Library] {title}", "url": f"Uploaded PDF: {file_name}"})
+
         for p in retrieved_papers:
             url = p.get("url", "")
             title = p.get("title", url)
@@ -273,8 +301,23 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         web_results = search_web(topic)
         web_context = format_search_results(web_results)
         
+        # Ingest PDF context if present
+        if pdf_context:
+            web_context = pdf_context + "\n\n" + web_context
+            
         # Build source list
         source_urls = []
+        
+        # Add PDF sources
+        seen_pdf_sources = set()
+        for chunk in retrieved_pdf_chunks:
+            meta = chunk.get("metadata", {})
+            file_name = meta.get("source_file", "PDF Document")
+            title = meta.get("title", file_name)
+            if file_name not in seen_pdf_sources:
+                seen_pdf_sources.add(file_name)
+                source_urls.append({"title": f"[PDF Library] {title}", "url": f"Uploaded PDF: {file_name}"})
+
         for r in (web_results or []):
             url   = r.get("url", "")
             title = r.get("title", url)

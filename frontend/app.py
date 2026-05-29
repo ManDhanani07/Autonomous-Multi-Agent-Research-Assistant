@@ -12,6 +12,7 @@ import streamlit as st
 import os
 import sys
 import time
+import json
 import threading
 
 # Add the project root to the Python path so it can import backend modules
@@ -80,18 +81,121 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Input Section
-st.markdown("<h3 style='margin-bottom: 16px; color: #ffffff; font-size: 1.4rem;'>Initialize Parameters</h3>", unsafe_allow_html=True)
-topic = st.text_input("Research Topic", placeholder="e.g., Quantum Machine Learning Algorithms...", label_visibility="collapsed")
+tab_research, tab_pdf = st.tabs(["🔬 Research Workspace", "📁 Document Library"])
 
-st.markdown("<br>", unsafe_allow_html=True)
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    initiate_btn = st.button("Execute Neural Protocol")
+with tab_research:
+    # Input Section
+    st.markdown("<h3 style='margin-bottom: 16px; color: #ffffff; font-size: 1.4rem;'>Initialize Parameters</h3>", unsafe_allow_html=True)
+    topic = st.text_input("Research Topic", placeholder="e.g., Quantum Machine Learning Algorithms...", label_visibility="collapsed")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        initiate_btn = st.button("Execute Neural Protocol")
+    
+    # Placeholder for dynamic workflow UI
+    workflow_ui = st.empty()
+    output_ui = st.empty()
 
-# Placeholder for dynamic workflow UI
-workflow_ui = st.empty()
-output_ui = st.empty()
+with tab_pdf:
+    st.markdown("<h3 style='margin-bottom: 12px; color: #ffffff; font-size: 1.4rem;'>Ingest PDF Literature</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#a1a1aa; font-size:0.95rem; margin-bottom:20px;'>Upload academic PDF documents to parse, split, and vectorize their contents into the RAG system database.</p>", unsafe_allow_html=True)
+    
+    uploaded_file = st.file_uploader("Upload Academic PDF Paper", type=["pdf"])
+    if uploaded_file is not None:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Process & Ingest Paper", key="ingest_pdf_button"):
+            # Set up save path
+            database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database")
+            upload_dir = os.path.join(database_dir, "uploaded_pdfs")
+            os.makedirs(upload_dir, exist_ok=True)
+            temp_path = os.path.join(upload_dir, uploaded_file.name)
+            
+            # Save file
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+                
+            # Ingest to Chroma
+            from tools.pdf_parser_tool import ingest_pdf_to_chroma
+            try:
+                with st.spinner(f"Parsing, chunking, and indexing '{uploaded_file.name}'..."):
+                    record = ingest_pdf_to_chroma(temp_path, uploaded_file.name)
+                st.success(f"Successfully processed and ingested '{record['title']}'!")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to ingest paper: {e}")
+                
+    st.markdown("---")
+    
+    # Render library list
+    database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database")
+    metadata_file = os.path.join(database_dir, "pdf_metadata.json")
+    ingested_papers = []
+    if os.path.exists(metadata_file):
+        try:
+            with open(metadata_file, "r", encoding="utf-8") as f:
+                ingested_papers = json.load(f)
+        except Exception:
+            ingested_papers = []
+            
+    if ingested_papers:
+        st.markdown(f"<h3 style='color:#ffffff; margin-bottom: 16px;'>Ingested Papers ({len(ingested_papers)})</h3>", unsafe_allow_html=True)
+        for idx, paper in enumerate(ingested_papers, start=1):
+            sections_str = ", ".join(paper.get("sections", []))
+            with st.expander(f"📄  {paper.get('title')}  ·  {paper.get('chunk_count')} chunks"):
+                st.markdown(
+                    f"<div style='display:flex;align-items:center;gap:12px;"
+                    f"padding:12px 16px;margin-bottom:14px;"
+                    f"background:rgba(99,102,241,0.07);"
+                    f"border-radius:10px;border:1px solid rgba(99,102,241,0.18);'>"
+                    f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#818cf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                    f"<path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/>"
+                    f"</svg>"
+                    f"<div style='flex:1;min-width:0;'>"
+                    f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
+                    f"letter-spacing:0.1em;color:#818cf8;'>Paper {idx} · {paper.get('filename')}</p>"
+                    f"<p style='margin:2px 0 0 0;font-size:0.95rem;font-weight:600;color:#ffffff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>{paper.get('title')}</p>"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+                
+                # Stats badges
+                st.markdown(
+                    f"<div style='display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;'>"
+                    f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                    f"background:rgba(129,140,248,0.1);color:#818cf8;"
+                    f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                    f"border:1px solid rgba(129,140,248,0.3);font-weight:600;'>"
+                    f" Chunks: {paper.get('chunk_count')}</span>"
+                    f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                    f"background:rgba(167,139,250,0.1);color:#c084fc;"
+                    f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                    f"border:1px solid rgba(167,139,250,0.3);font-weight:600;'>"
+                    f" Tables: {paper.get('table_count')}</span>"
+                    f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                    f"background:rgba(52,211,153,0.1);color:#34d399;"
+                    f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                    f"border:1px solid rgba(52,211,153,0.3);font-weight:600;'>"
+                    f" References: {paper.get('reference_count')}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+                st.markdown(f"**Extracted Sections:** {sections_str}")
+                st.markdown("---")
+                st.markdown(f"**Summary Preview:**\n{paper.get('summary')}")
+    else:
+        st.markdown(
+            "<div style='display:flex;align-items:center;gap:12px;"
+            "padding:16px 20px;margin-bottom:24px;"
+            "background:rgba(59,130,246,0.08);color:#93c5fd;"
+            "border-radius:10px;border:1px solid rgba(59,130,246,0.25);font-weight:600;'>"
+            "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#93c5fd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>"
+            "<span>No papers have been ingested yet. Upload an academic PDF above to start building your literature library.</span>"
+            "</div>",
+            unsafe_allow_html=True
+        )
 
 def render_workflow_step(current_step):
     """Generates the HTML for the workflow pipeline based on the current step (1 to 6)"""
