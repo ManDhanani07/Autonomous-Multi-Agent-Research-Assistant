@@ -84,10 +84,13 @@ def create_research_prompt(topic: str,
             title = src.get("title", f"Source {i}")
             url   = src.get("url", "#")
             if url.startswith("http"):
+                # Real academic URL — render as clickable link
                 references_block += f"{i}. [{title}]({url})\n"
             else:
-                # PDF Library entry — render as plain text with icon
-                references_block += f"{i}. 📄 {title} — _{url}_\n"
+                # PDF Library entry — show clean title only (no raw filename)
+                clean_title = title.replace("[PDF Library] ", "").strip()
+                references_block += f"{i}. 📄 {clean_title} _(from your PDF library)_\n"
+
 
     # ── Inject Planner Guidance ───────────────────────────────────────────
     if plan and isinstance(plan, dict):

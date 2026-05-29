@@ -680,52 +680,82 @@ if getattr(st.session_state, 'running', False):
                     )
 
 
-                # ── PDF RAG Panel (Sign 2) ────────────────────────────────────
+                # ── PDF Library Panel — grouped by file (1 card per PDF) ─────
                 retrieved_pdf_chunks_ui = getattr(st.session_state, "retrieved_pdf_chunks", [])
                 if retrieved_pdf_chunks_ui:
-                    st.markdown(
-                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #f59e0b; "
-                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
-                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
-                        f"<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='M16 13H8'/><path d='M16 17H8'/><path d='M10 9H8'/></svg>"
-                        f" 📄 PDF Library — Context Injected Into Report</h3>",
-                        unsafe_allow_html=True
-                    )
-                    st.markdown(
-                        f"<p style='color: #71717a; font-size: 0.9rem; margin-bottom: 16px;'>"
-                        f"Found <strong style='color:#f59e0b'>{len(retrieved_pdf_chunks_ui)}</strong> relevant excerpt(s) "
-                        f"from your uploaded PDF(s). These were injected directly into the AI prompt.</p>",
-                        unsafe_allow_html=True
-                    )
-                    seen_files = set()
-                    for idx, chunk in enumerate(retrieved_pdf_chunks_ui, start=1):
-                        meta = chunk.get("metadata", {})
+                    # Group chunks by unique source file
+                    pdf_groups = {}
+                    for chunk in retrieved_pdf_chunks_ui:
+                        meta  = chunk.get("metadata", {})
                         fname = meta.get("source_file", "PDF")
-                        section = meta.get("section", "—")
-                        title = meta.get("title", fname)
-                        sim_pct = chunk.get("similarity_pct", "—")
-                        sim_val = chunk.get("similarity_score", 0)
-                        excerpt = chunk.get("document", "")[:200]
-                        badge_color = "#10b981" if sim_val >= 0.6 else ("#f59e0b" if sim_val >= 0.4 else "#6366f1")
-                        with st.expander(f"📄  Chunk {idx}  ·  {sim_pct} match  —  [{section}]  {fname[:45]}{'...' if len(fname) > 45 else ''}"):
+                        if fname not in pdf_groups:
+                            pdf_groups[fname] = {
+                                "title":    meta.get("title", fname),
+                                "sections": [],
+                                "best_sim": 0,
+                                "best_pct": "0%",
+                                "best_excerpt": ""
+                            }
+                        g = pdf_groups[fname]
+                        sec = meta.get("section", "")
+                        if sec and sec not in g["sections"]:
+                            g["sections"].append(sec)
+                        sim = chunk.get("similarity_score", 0)
+                        if sim > g["best_sim"]:
+                            g["best_sim"]     = sim
+                            g["best_pct"]     = chunk.get("similarity_pct", "—")
+                            g["best_excerpt"] = chunk.get("document", "")[:300]
+
+                    unique_count = len(pdf_groups)
+                    st.markdown(
+                        f"<h3 style='margin-top:30px;margin-bottom:12px;color:#f59e0b;"
+                        f"font-size:1.3rem;display:flex;align-items:center;gap:10px;'>"
+                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' "
+                        f"stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                        f"<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/>"
+                        f"<path d='M14 2v6h6'/><path d='M16 13H8'/><path d='M16 17H8'/><path d='M10 9H8'/></svg>"
+                        f" 📄 PDF Library — Used in This Report</h3>",
+                        unsafe_allow_html=True
+                    )
+                    st.markdown(
+                        f"<p style='color:#71717a;font-size:0.9rem;margin-bottom:16px;'>"
+                        f"<strong style='color:#f59e0b'>{unique_count}</strong> of your uploaded PDF(s) matched this topic "
+                        f"and were injected into the AI prompt.</p>",
+                        unsafe_allow_html=True
+                    )
+
+                    for fname, g in pdf_groups.items():
+                        sim_val   = g["best_sim"]
+                        sim_pct   = g["best_pct"]
+                        sections  = ", ".join(g["sections"]) or "—"
+                        title     = g["title"]
+                        excerpt   = g["best_excerpt"]
+                        badge_col = "#10b981" if sim_val >= 0.6 else ("#f59e0b" if sim_val >= 0.4 else "#6366f1")
+                        short_title = title[:70] + ("..." if len(title) > 70 else "")
+
+                        with st.expander(f"📄  {short_title}  ·  Best match: {sim_pct}"):
+                            # Header card
                             st.markdown(
-                                f"<div style='display:flex;align-items:center;gap:12px;"
-                                f"padding:10px 14px;margin-bottom:10px;"
-                                f"background:rgba(245,158,11,0.07);"
-                                f"border-radius:8px;border:1px solid rgba(245,158,11,0.2);'>"
-                                f"<div style='flex:1'>"
-                                f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#f59e0b;'>Section: {section}</p>"
-                                f"<p style='margin:2px 0 0 0;font-size:0.85rem;color:#a1a1aa;'>{title[:80]}</p>"
-                                f"</div>"
-                                f"<span style='background:{badge_color}22;color:{badge_color};"
-                                f"padding:4px 12px;border-radius:20px;font-size:0.8rem;"
-                                f"font-weight:700;border:1px solid {badge_color}55;'>{sim_pct}</span>"
-                                f"</div>",
+                                f"<div style='background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);"
+                                f"border-radius:8px;padding:12px 16px;margin-bottom:12px;'>"
+                                f"<p style='margin:0 0 6px 0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
+                                f"letter-spacing:0.1em;color:#f59e0b;'>PAPER TITLE</p>"
+                                f"<p style='margin:0 0 10px 0;font-size:0.95rem;font-weight:600;color:#ffffff;'>{title}</p>"
+                                f"<div style='display:flex;gap:10px;flex-wrap:wrap;'>"
+                                f"<span style='background:{badge_col}22;color:{badge_col};padding:3px 10px;"
+                                f"border-radius:20px;font-size:0.78rem;font-weight:700;border:1px solid {badge_col}44;'>"
+                                f"✦ Best match: {sim_pct}</span>"
+                                f"<span style='background:rgba(255,255,255,0.05);color:#a1a1aa;padding:3px 10px;"
+                                f"border-radius:20px;font-size:0.78rem;'>Sections: {sections}</span>"
+                                f"</div></div>",
                                 unsafe_allow_html=True
                             )
                             st.progress(min(sim_val, 1.0))
-                            st.markdown(f"**Excerpt injected into prompt:**")
-                            st.markdown(f"> {excerpt}{'...' if len(chunk.get('document','')) > 200 else ''}")
+                            if excerpt:
+                                st.markdown("**Excerpt injected into the prompt:**")
+                                st.markdown(f"> {excerpt}{'...' if len(g['best_excerpt']) >= 300 else ''}")
+
+
 
                 # ── Academic Literature Panel ──────────────────────────────────
                 fallback_used = getattr(st.session_state, "fallback_used", False)
