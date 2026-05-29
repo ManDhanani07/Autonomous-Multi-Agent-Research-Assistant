@@ -110,6 +110,16 @@ Subtopics to cover:
 """
 
     # ── Structured report instructions ────────────────────────────────────
+    # Dynamic memory instructions
+    if memory_context:
+        intro_memory = "If related memory exists, note how this topic connects to previous research."
+        conclusion_memory = "Powerful, synthesised concluding paragraph referencing both memory and web data."
+        constraint_memory = "- If memory context was provided, explicitly connect insights across research sessions."
+    else:
+        intro_memory = "Provide a high-level overview of the topic. Since no past research memory exists for this topic, do NOT refer to or invent any previous research sessions, past sessions, or memory (e.g. do not write 'as noted in previous sessions' or 'Memory 1', 'Memory 2')."
+        conclusion_memory = "Powerful, synthesised concluding paragraph referencing the retrieved data and papers."
+        constraint_memory = "- Do NOT reference or invent any past memory, past sessions, previous research sessions, or memory names (e.g. 'Memory 1', 'Memory 2'), since no memory context was provided."
+
     prompt += f"""
 Please generate a detailed, structured markdown report. Follow the exact structure
 below, using professional headings, bullet points where appropriate, and concise
@@ -122,7 +132,7 @@ actively integrate those insights to produce richer, connected analysis.
 
 ## 1. Introduction
 High-level overview: what it is, why it matters, current industry relevance.
-If related memory exists, note how this topic connects to previous research.
+{intro_memory}
 
 ## 2. Core Concepts
 Fundamental principles, underlying technologies, or key theories.
@@ -141,10 +151,10 @@ Current limitations, technical hurdles, ethical concerns, or adoption barriers.
 Trajectory, upcoming innovations, and long-term potential (5–10 year horizon).
 
 ## 7. Conclusion
-Powerful, synthesised concluding paragraph referencing both memory and web data.
+{conclusion_memory}
 {references_block}
 """
-    prompt += """
+    prompt += f"""
 **Output Constraints:**
 - Use clean, visually appealing Markdown formatting.
 - Tone: objective, academic yet accessible, highly professional.
@@ -153,7 +163,7 @@ Powerful, synthesised concluding paragraph referencing both memory and web data.
 - STRICT LINK RULE: Do NOT invent, fabricate, or guess any URLs or hyperlinks. NEVER write [text](https://example.com) or any placeholder links.
 - STRICT LINK RULE: Only cite sources that were explicitly provided in the web search results above. If you want to reference a source, write its plain URL directly (e.g. https://actual-url.com) — do NOT wrap it in markdown link syntax.
 - The ## 8. References section MUST use ONLY the exact URLs provided in the source list — do not modify or invent any URL.
-- If memory context was provided, explicitly connect insights across research sessions.
+{constraint_memory}
 """
     return prompt.strip()
 

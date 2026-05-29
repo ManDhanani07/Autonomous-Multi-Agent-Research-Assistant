@@ -124,7 +124,7 @@ with tab_pdf:
                 f.write(uploaded_file.getbuffer())
                 
             # Save file to static for serving
-            static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "uploaded_pdfs")
+            static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "uploaded_pdfs")
             os.makedirs(static_dir, exist_ok=True)
             static_path = os.path.join(static_dir, uploaded_file.name)
             with open(static_path, "wb") as f:
@@ -763,20 +763,28 @@ if getattr(st.session_state, 'running', False):
                         badge_col = "#10b981" if sim_val >= 0.6 else ("#f59e0b" if sim_val >= 0.4 else "#6366f1")
                         short_title = title[:70] + ("..." if len(title) > 70 else "")
 
+                        import urllib.parse
+                        safe_filename = urllib.parse.quote(fname)
+                        pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+
                         with st.expander(f"📄  {short_title}  ·  Best match: {sim_pct}"):
                             # Header card
                             st.markdown(
                                 f"<div style='background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);"
                                 f"border-radius:8px;padding:12px 16px;margin-bottom:12px;'>"
                                 f"<p style='margin:0 0 6px 0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
-                                f"letter-spacing:0.1em;color:#f59e0b;'>PAPER TITLE</p>"
-                                f"<p style='margin:0 0 10px 0;font-size:0.95rem;font-weight:600;color:#ffffff;'>{title}</p>"
-                                f"<div style='display:flex;gap:10px;flex-wrap:wrap;'>"
+                                f"letter-spacing:0.1em;color:#f59e0b;'>PAPER TITLE & FILENAME</p>"
+                                f"<p style='margin:0 0 4px 0;font-size:0.95rem;font-weight:600;color:#ffffff;'>{title}</p>"
+                                f"<p style='margin:0 0 10px 0;font-size:0.8rem;color:#71717a;'>📄 {fname}</p>"
+                                f"<div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center;'>"
                                 f"<span style='background:{badge_col}22;color:{badge_col};padding:3px 10px;"
                                 f"border-radius:20px;font-size:0.78rem;font-weight:700;border:1px solid {badge_col}44;'>"
                                 f"✦ Best match: {sim_pct}</span>"
                                 f"<span style='background:rgba(255,255,255,0.05);color:#a1a1aa;padding:3px 10px;"
                                 f"border-radius:20px;font-size:0.78rem;'>Sections: {sections}</span>"
+                                f"<a href='{pdf_url}' target='_blank' style='text-decoration:none;display:inline-flex;align-items:center;'>"
+                                f"<span style='background:rgba(99,102,241,0.15);color:#a5b4fc;padding:3px 10px;"
+                                f"border-radius:20px;font-size:0.78rem;font-weight:600;border:1px solid rgba(99,102,241,0.3);'>👁️ View PDF</span></a>"
                                 f"</div></div>",
                                 unsafe_allow_html=True
                             )
