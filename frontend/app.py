@@ -308,6 +308,7 @@ if initiate_btn:
         st.session_state.retrieved_memories = []   # RAG: store for UI display
         st.session_state.academic_papers = []      # Academic sources
         st.session_state.fallback_used = False     # Fallback flag
+        st.session_state.retrieved_pdf_chunks = [] # PDF RAG chunks
 
 if getattr(st.session_state, 'running', False):
     if not st.session_state.full_research:
@@ -329,6 +330,7 @@ if getattr(st.session_state, 'running', False):
         st.session_state.retrieved_memories = research_result.get("memories", [])
         st.session_state.academic_papers = research_result.get("academic_papers", [])
         st.session_state.fallback_used = research_result.get("fallback_used", False)
+        st.session_state.retrieved_pdf_chunks = research_result.get("pdf_chunks", [])
         
         if initial_report.startswith("⚠️"):
             # Skip loop if quota hit
@@ -678,9 +680,57 @@ if getattr(st.session_state, 'running', False):
                     )
 
 
+                # ── PDF RAG Panel (Sign 2) ────────────────────────────────────
+                retrieved_pdf_chunks_ui = getattr(st.session_state, "retrieved_pdf_chunks", [])
+                if retrieved_pdf_chunks_ui:
+                    st.markdown(
+                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #f59e0b; "
+                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
+                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                        f"<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='M16 13H8'/><path d='M16 17H8'/><path d='M10 9H8'/></svg>"
+                        f" 📄 PDF Library — Context Injected Into Report</h3>",
+                        unsafe_allow_html=True
+                    )
+                    st.markdown(
+                        f"<p style='color: #71717a; font-size: 0.9rem; margin-bottom: 16px;'>"
+                        f"Found <strong style='color:#f59e0b'>{len(retrieved_pdf_chunks_ui)}</strong> relevant excerpt(s) "
+                        f"from your uploaded PDF(s). These were injected directly into the AI prompt.</p>",
+                        unsafe_allow_html=True
+                    )
+                    seen_files = set()
+                    for idx, chunk in enumerate(retrieved_pdf_chunks_ui, start=1):
+                        meta = chunk.get("metadata", {})
+                        fname = meta.get("source_file", "PDF")
+                        section = meta.get("section", "—")
+                        title = meta.get("title", fname)
+                        sim_pct = chunk.get("similarity_pct", "—")
+                        sim_val = chunk.get("similarity_score", 0)
+                        excerpt = chunk.get("document", "")[:200]
+                        badge_color = "#10b981" if sim_val >= 0.6 else ("#f59e0b" if sim_val >= 0.4 else "#6366f1")
+                        with st.expander(f"📄  Chunk {idx}  ·  {sim_pct} match  —  [{section}]  {fname[:45]}{'...' if len(fname) > 45 else ''}"):
+                            st.markdown(
+                                f"<div style='display:flex;align-items:center;gap:12px;"
+                                f"padding:10px 14px;margin-bottom:10px;"
+                                f"background:rgba(245,158,11,0.07);"
+                                f"border-radius:8px;border:1px solid rgba(245,158,11,0.2);'>"
+                                f"<div style='flex:1'>"
+                                f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#f59e0b;'>Section: {section}</p>"
+                                f"<p style='margin:2px 0 0 0;font-size:0.85rem;color:#a1a1aa;'>{title[:80]}</p>"
+                                f"</div>"
+                                f"<span style='background:{badge_color}22;color:{badge_color};"
+                                f"padding:4px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"font-weight:700;border:1px solid {badge_color}55;'>{sim_pct}</span>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            st.progress(min(sim_val, 1.0))
+                            st.markdown(f"**Excerpt injected into prompt:**")
+                            st.markdown(f"> {excerpt}{'...' if len(chunk.get('document','')) > 200 else ''}")
+
                 # ── Academic Literature Panel ──────────────────────────────────
                 fallback_used = getattr(st.session_state, "fallback_used", False)
                 academic_papers = getattr(st.session_state, "academic_papers", [])
+
                 
                 if fallback_used:
                     st.markdown(

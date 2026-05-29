@@ -373,7 +373,13 @@ def generate_research(topic: str, plan: dict = None) -> dict:
     # Clean headings to ensure integer numbering (1, 2, 3...)
     report = clean_report_headings(report)
 
-    return {"report": report, "memories": retrieved_memories, "academic_papers": retrieved_papers, "fallback_used": fallback_used}
+    return {
+        "report": report,
+        "memories": retrieved_memories,
+        "academic_papers": retrieved_papers,
+        "fallback_used": fallback_used,
+        "pdf_chunks": retrieved_pdf_chunks   # PDF RAG chunks for UI display
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
