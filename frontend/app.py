@@ -789,9 +789,6 @@ if getattr(st.session_state, 'running', False):
                                 unsafe_allow_html=True
                             )
                             st.progress(min(sim_val, 1.0))
-                            if excerpt:
-                                st.markdown("**Excerpt injected into the prompt:**")
-                                st.markdown(f"> {excerpt}{'...' if len(g['best_excerpt']) >= 300 else ''}")
 
 
 
