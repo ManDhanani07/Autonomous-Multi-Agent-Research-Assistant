@@ -194,6 +194,8 @@ if initiate_btn:
         st.session_state.critique_analysis = None
         st.session_state.planner_roadmap   = None
         st.session_state.retrieved_memories = []   # RAG: store for UI display
+        st.session_state.academic_papers = []      # Academic sources
+        st.session_state.fallback_used = False     # Fallback flag
 
 if getattr(st.session_state, 'running', False):
     if not st.session_state.full_research:
@@ -213,6 +215,8 @@ if getattr(st.session_state, 'running', False):
         research_result = generate_research(st.session_state.topic, plan=st.session_state.planner_roadmap)
         initial_report = research_result.get("report", "")
         st.session_state.retrieved_memories = research_result.get("memories", [])
+        st.session_state.academic_papers = research_result.get("academic_papers", [])
+        st.session_state.fallback_used = research_result.get("fallback_used", False)
         
         if initial_report.startswith("⚠️"):
             # Skip loop if quota hit
@@ -549,8 +553,7 @@ if getattr(st.session_state, 'running', False):
 
                             # Full stored memory content
                             st.markdown(mem.get("document", ""))
-
-
+                else:
                     st.markdown(
                         "<div style='display:flex;align-items:center;gap:12px;"
                         "padding:16px 20px;margin-bottom:24px;"
@@ -561,6 +564,101 @@ if getattr(st.session_state, 'running', False):
                         "</div>",
                         unsafe_allow_html=True
                     )
+
+
+                # ── Academic Literature Panel ──────────────────────────────────
+                fallback_used = getattr(st.session_state, "fallback_used", False)
+                academic_papers = getattr(st.session_state, "academic_papers", [])
+                
+                if fallback_used:
+                    st.markdown(
+                        "<div style='display:flex;align-items:center;gap:12px;"
+                        "padding:16px 20px;margin-top:20px;margin-bottom:24px;"
+                        "background:rgba(249,115,22,0.08);color:#fca5a5;"
+                        "border-radius:10px;border:1px solid rgba(249,115,22,0.25);font-weight:600;'>"
+                        "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#fca5a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>"
+                        "<span>Academic databases could not be reached or yielded no results. Fell back to Web Search intelligence.</span>"
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+                elif academic_papers:
+                    st.markdown(
+                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #818cf8; "
+                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
+                        f"<span style='color:#818cf8'>{ICON_RESEARCHER}</span> Retrieved Academic Literature</h3>",
+                        unsafe_allow_html=True
+                    )
+                    st.markdown(
+                        f"<p style='color: #71717a; font-size: 0.9rem; margin-bottom: 16px;'>"
+                        f"Retrieved <strong style='color:#818cf8'>{len(academic_papers)}</strong> peer-reviewed publications "
+                        f"from arXiv, Semantic Scholar, and Crossref. Prioritized based on citations, recency, and journal index.</p>",
+                        unsafe_allow_html=True
+                    )
+                    
+                    for idx, paper in enumerate(academic_papers, start=1):
+                        title = paper.get("title", "No Title")
+                        authors = ", ".join(paper.get("authors", [])[:3])
+                        if len(paper.get("authors", [])) > 3:
+                            authors += " et al."
+                        year = paper.get("year", "N/A")
+                        citations = paper.get("citations", 0)
+                        venue = paper.get("venue") or "Academic Source"
+                        url = paper.get("url") or "#"
+                        abstract = paper.get("abstract") or "No abstract available."
+                        
+                        # Style-matched card expander
+                        with st.expander(f"📄  Paper {idx}  ·  {citations} citations  —  {title[:55]}{'...' if len(title) > 55 else ''}"):
+                            st.markdown(
+                                f"<div style='display:flex;align-items:center;gap:12px;"
+                                f"padding:12px 16px;margin-bottom:14px;"
+                                f"background:rgba(129,140,248,0.07);"
+                                f"border-radius:10px;border:1px solid rgba(129,140,248,0.18);'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#818cf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+                                f"<path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/>"
+                                f"</svg>"
+                                f"<div style='flex:1;min-width:0;'>"
+                                f"<p style='margin:0;font-size:0.7rem;font-weight:700;text-transform:uppercase;"
+                                f"letter-spacing:0.1em;color:#818cf8;'>Paper {idx} · {venue}</p>"
+                                f"<a href='{url}' target='_blank' style='margin:2px 0 0 0;font-size:0.95rem;font-weight:600;color:#ffffff;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{title} ↗</a>"
+                                f"</div>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            
+                            # Info badges
+                            st.markdown(
+                                f"<div style='display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;'>"
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(129,140,248,0.1);color:#818cf8;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"border:1px solid rgba(129,140,248,0.3);font-weight:600;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#818cf8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>"
+                                f" Published: {year}</span>"
+                                
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(167,139,250,0.1);color:#c084fc;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"border:1px solid rgba(167,139,250,0.3);font-weight:600;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#c084fc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>"
+                                f" Citations: {citations}</span>"
+                                
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(52,211,153,0.1);color:#34d399;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
+                                f"border:1px solid rgba(52,211,153,0.3);font-weight:600;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/><path d='M3 12c0 1.66 4 3 9 3s9-1.34 9-3'/></svg>"
+                                f" DB: {paper.get('source', 'Unknown')}</span>"
+                                
+                                f"<span style='display:inline-flex;align-items:center;gap:6px;"
+                                f"background:rgba(255,255,255,0.05);color:#71717a;"
+                                f"padding:5px 12px;border-radius:20px;font-size:0.8rem;'>"
+                                f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#71717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>"
+                                f" {authors}</span>"
+                                f"</div>",
+                                unsafe_allow_html=True
+                            )
+                            
+                            st.markdown(f"**Abstract:** {abstract}")
 
                 # ── Executive Summary ────────────────────────────────────
                 st.markdown(

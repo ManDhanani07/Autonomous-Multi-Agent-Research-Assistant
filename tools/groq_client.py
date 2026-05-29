@@ -5,6 +5,13 @@ import threading
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai import OpenAIError
+import sys
+
+# Force UTF-8 encoding for standard output/error on Windows to prevent console print crashes with emojis/unicode
+if sys.platform.startswith("win"):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 
 # Load environment variables from .env file
 # override=True ensures values from .env always win over stale OS env vars

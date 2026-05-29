@@ -139,12 +139,53 @@ Powerful, synthesised concluding paragraph referencing both memory and web data.
 - Use clean, visually appealing Markdown formatting.
 - Tone: objective, academic yet accessible, highly professional.
 - Do NOT include conversational filler. Begin directly with the Markdown title.
+- STRICT HEADING NUMBERING: Number the main H2 headings exactly as '## 1. Introduction', '## 2. Core Concepts', etc. NEVER write '## 1.1', '## 1.0', or '## 2.0' for these sections. Main H2 headings must use only integers: 1, 2, 3, 4, 5, 6, 7, 8.
 - STRICT LINK RULE: Do NOT invent, fabricate, or guess any URLs or hyperlinks. NEVER write [text](https://example.com) or any placeholder links.
 - STRICT LINK RULE: Only cite sources that were explicitly provided in the web search results above. If you want to reference a source, write its plain URL directly (e.g. https://actual-url.com) — do NOT wrap it in markdown link syntax.
 - The ## 8. References section MUST use ONLY the exact URLs provided in the source list — do not modify or invent any URL.
 - If memory context was provided, explicitly connect insights across research sessions.
 """
     return prompt.strip()
+
+
+def clean_report_headings(text: str) -> str:
+    """
+    Cleans up report headings to ensure they use integer numbering (e.g. '## 1. Introduction')
+    instead of decimals (e.g. '## 1.0' or '## 1.1').
+    """
+    import re
+    if not text:
+        return ""
+        
+    lines = text.split("\n")
+    cleaned_lines = []
+    
+    # Map of standard sections to ensure correct titles are preserved
+    section_map = {
+        1: "Introduction",
+        2: "Core Concepts",
+        3: "Applications",
+        4: "Advantages",
+        5: "Challenges",
+        6: "Future Scope",
+        7: "Conclusion",
+        8: "References"
+    }
+    
+    for line in lines:
+        # Match H2 headings, e.g., "## 1.0 Introduction" or "## 1.1 Introduction" or "## 1. Introduction" or "## 1 Introduction"
+        match = re.match(r"^##\s*(\d+)(?:\.\d+)*\s*[\.:\-]?\s*(.*)$", line)
+        if match:
+            num = int(match.group(1))
+            title = match.group(2).strip()
+            
+            if num in section_map:
+                # Clean leading punctuation/numbers from title
+                title = re.sub(r"^[\d\.\s\-:]*", "", title)
+                line = f"## {num}. {title}"
+        cleaned_lines.append(line)
+        
+    return "\n".join(cleaned_lines)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -192,54 +233,87 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         print(f"[Memory Retrieval Error] Could not search memory: {e}")
         memory_context, retrieved_memories = "", []
 
-    # ── STEP 1: Web search ────────────────────────────────────────────────
-    web_results = search_web(topic)
-    web_context = format_search_results(web_results)
+    # ── STEP 1: Academic Search ───────────────────────────────────────────
+    from tools.academic_search_tool import search_academic_literature, format_academic_context
 
-    # Build a clean source list for the References section
-    source_urls = []
-    for r in (web_results or []):
-        url   = r.get("url", "")
-        title = r.get("title", url)
-        if url and url.startswith("http"):
-            source_urls.append({"title": title, "url": url})
-
-    # ── STEP 2: Deep scrape top 2 results ────────────────────────────────
-    deep_context  = ""
-    scraped_count = 0
-
-    if web_results:
-        for r in web_results[:2]:
-            url = r.get("url")
+    print(f"\n[*] Academic Search: Initiating queries for topic: '{topic}'...")
+    retrieved_papers = []
+    fallback_used = False
+    
+    try:
+        retrieved_papers = search_academic_literature(topic)
+    except Exception as e:
+        print(f"[!] Academic Search: Query wrapper failed. Detail: {e}")
+        
+    if retrieved_papers:
+        # Generate context from papers
+        academic_context = format_academic_context(retrieved_papers)
+        
+        # Build source list for the references section
+        source_urls = []
+        for p in retrieved_papers:
+            url = p.get("url", "")
+            title = p.get("title", url)
             if url and url.startswith("http"):
-                print(f"[*] Deep Research: Launching browser to scrape content from: {url}")
-                article_text = scrape_article(url)
-                if article_text:
-                    deep_context += f"--- Deep Web Source: {r['title']} ({url}) ---\n"
-                    # 1500 chars ≈ 375 tokens — balanced between context and budget
-                    deep_context += f"{article_text[:1500]}\n"
-                    deep_context += "-" * 50 + "\n\n"
-                    scraped_count += 1
-
-        print(f"[*] Deep Research: Successfully gathered detailed context from {scraped_count} webpages.")
-
-    if deep_context:
-        web_context += "\n### DEEP SCRAPED WEB PAGE CONTENT ###\n"
-        web_context += (
-            "The following are actual readable sections scraped from the top web results. "
-            "Use this detailed data to write highly specific, factual sections:\n\n"
+                source_urls.append({"title": title, "url": url})
+                
+        # ── STEP 3: Assemble prompt with academic context ─────────────────────
+        print(f"[*] Compiling academic research parameters for: {topic}...")
+        prompt = create_research_prompt(
+            topic=topic,
+            web_context=academic_context,
+            source_urls=source_urls,
+            memory_context=memory_context,
+            plan=plan
         )
-        web_context += deep_context
-
-    # ── STEP 3: Assemble prompt with full context ─────────────────────────
-    print(f"[*] Compiling research parameters for: {topic}...")
-    prompt = create_research_prompt(
-        topic=topic,
-        web_context=web_context,
-        source_urls=source_urls,
-        memory_context=memory_context,
-        plan=plan
-    )
+    else:
+        # FALLBACK: Web search
+        print("[!] Academic Search: No academic literature retrieved or API failure. Falling back to Web Search...")
+        fallback_used = True
+        web_results = search_web(topic)
+        web_context = format_search_results(web_results)
+        
+        # Build source list
+        source_urls = []
+        for r in (web_results or []):
+            url   = r.get("url", "")
+            title = r.get("title", url)
+            if url and url.startswith("http"):
+                source_urls.append({"title": title, "url": url})
+                
+        # Deep scrape web results
+        deep_context = ""
+        scraped_count = 0
+        if web_results:
+            for r in web_results[:2]:
+                url = r.get("url")
+                if url and url.startswith("http"):
+                    print(f"[*] Deep Research: Launching browser to scrape content from: {url}")
+                    article_text = scrape_article(url)
+                    if article_text:
+                        deep_context += f"--- Deep Web Source: {r['title']} ({url}) ---\n"
+                        deep_context += f"{article_text[:1500]}\n"
+                        deep_context += "-" * 50 + "\n\n"
+                        scraped_count += 1
+            print(f"[*] Deep Research: Successfully gathered detailed context from {scraped_count} webpages.")
+            
+        if deep_context:
+            web_context += "\n### DEEP SCRAPED WEB PAGE CONTENT ###\n"
+            web_context += (
+                "The following are actual readable sections scraped from the top web results. "
+                "Use this detailed data to write highly specific, factual sections:\n\n"
+            )
+            web_context += deep_context
+            
+        # ── STEP 3: Assemble prompt with web context ─────────────────────────
+        print(f"[*] Compiling web search parameters for: {topic}...")
+        prompt = create_research_prompt(
+            topic=topic,
+            web_context=web_context,
+            source_urls=source_urls,
+            memory_context=memory_context,
+            plan=plan
+        )
 
     # ── STEP 4: Generate report via Groq ─────────────────────────────────
     print("[*] Transmitting request to Groq AI engine...")
@@ -247,9 +321,12 @@ def generate_research(topic: str, plan: dict = None) -> dict:
 
     if report.startswith("⚠️"):
         print(f"[Researcher Agent] API quota/rate-limit issue detected: {report[:120]}...")
-        return {"report": report, "memories": retrieved_memories}
+        return {"report": report, "memories": retrieved_memories, "academic_papers": retrieved_papers, "fallback_used": fallback_used}
 
-    return {"report": report, "memories": retrieved_memories}
+    # Clean headings to ensure integer numbering (1, 2, 3...)
+    report = clean_report_headings(report)
+
+    return {"report": report, "memories": retrieved_memories, "academic_papers": retrieved_papers, "fallback_used": fallback_used}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -321,6 +398,9 @@ def refine_research(topic: str, previous_report: str, critique_json: dict) -> st
     
     if optimized_report.startswith("⚠️"):
         print(f"[Researcher Agent Error] API quota issue during refinement.")
+    else:
+        # Clean headings to ensure integer numbering (1, 2, 3...)
+        optimized_report = clean_report_headings(optimized_report)
         
     return optimized_report
 

@@ -10,35 +10,62 @@
 ---
 
 ## 🌌 Project Overview
-The objective of this project is to develop an Autonomous Multi-Agent Research Assistant capable of performing intelligent technical research using collaborative AI agents. The system automates multiple stages of the research lifecycle, including information generation, summarization, critique analysis, and long-term semantic memory storage.
+The objective of this project is to develop an Autonomous Multi-Agent Research Assistant capable of performing intelligent technical research using collaborative AI agents. The system automates multiple stages of the research lifecycle, including planning, information generation, summarization, critique analysis, and long-term semantic memory storage.
+
+---
+
+## 📐 System Workflow Architecture (Week-2)
+In Week-2, the multi-agent pipeline has been updated to incorporate a strategic planning layer and dynamic semantic memory context injection. The revised execution pipeline operates as follows:
+
+```mermaid
+graph TD
+    User([User Prompt]) --> UI[Research Workspace Dashboard]
+    UI --> |Triggers Pipeline| Planner[Strategic Planner Agent]
+    
+    %% Planning & RAG Recall
+    Planner --> |Generates Strategic Roadmap| MemoryRecall[Semantic Memory Manager]
+    MemoryRecall --> |Queries Vector database| ChromaDB[(ChromaDB Vector Pool)]
+    ChromaDB --> |Injects Relevant Past Research Context| Researcher[Elite Researcher Agent]
+    
+    %% Core Compilation
+    Researcher --> |Compiles Comprehensive Technical Report| Summarizer[Executive Summarizer Agent]
+    Summarizer --> |Synthesizes Conceptual Brief| Critic[AI Critic Agent]
+    
+    %% Review & Output
+    Critic --> |Generates Critique & Quality Score| UI_Render[Display Styled Sections in UI]
+    Researcher & Summarizer & Critic --> |Index Combined Research Session| IndexMemory[Memory Manager]
+    IndexMemory --> |Writes Embeddings| ChromaDB
+```
+
+The execution flow consists of:
+1.  **Strategic Planning**: The system initiates by planning the study routes and outlines.
+2.  **Context-Aware Ingestion**: Before query compilation, vector databases are scanned for historical records to serve as context for the research agent.
+3.  **Collaborative Assembly**: The researcher compiles raw technical literature, which is subsequently summarized and critiqued.
+4.  **Persistent Storage**: The session data is vectorized and archived to semantic pools for future search context.
 
 ---
 
 ## 🛠 Work Done in Last Week (Week-2)
 
-### 1. Advanced UI/UX Refinement & Theme Standardization
-*   Implemented a unified, high-fidelity dark SaaS theme featuring Outfit typography, glassmorphism containers, and custom scrollbars.
-*   Replaced generic browser emojis with custom inline **Lucide SVG icons** across the main application workspace, planning roadmap panels, memory list tags, and section headers.
-*   Fixed a visual subpixel-rendering layout leak (a tiny white dash artifact) that appeared on every dashboard page by globally hiding the Streamlit wrapper container (`div[data-testid="element-container"]`) of the script injection iframe.
+### 1. Strategic Planner Agent Integration
+*   Integrated the Planner Agent into the live multi-agent execution pipeline to generate strategic roadmaps and set outlines at the start of each run.
+*   Designed a dedicated UI dashboard component to display strategic objectives dynamically using custom typography and vector layouts.
 
-### 2. AI Memory Bank Page Implementation (`4_AI_Memory_Bank.py`)
-*   Designed and built a dedicated vector storage explorer page allowing real-time inspection of ChromaDB collections.
-*   Structured custom collapsible memory cards featuring a premium green accent theme, inline Lucide folder icons, calendar-clock timestamp badges, and UUID grid badges.
-*   Mapped ChromaDB text documents and metadata directly to these card UI layouts.
+### 2. Semantic Retrieval Memory (RAG) Integration
+*   Connected the vector database retrieval pipeline to the Researcher module to fetch semantically matching historical records prior to drafting.
+*   Designed interactive relevance indicators and similarity progress metrics inside the expanded memory components to monitor data retrieval.
 
-### 3. Custom Premium Notification Banners
-*   Replaced generic Streamlit alerts (`st.success`, `st.error`, and `st.info`) with custom-designed responsive HTML cards containing Lucide SVG icons.
-*   Created custom banners for:
-    *   **Memory Saved Successfully** (Lucide Check icon in an emerald green theme)
-    *   **Autonomous Research Pipeline Complete** (Lucide Clock icon in an emerald green theme)
-    *   **API Quota Error** (Lucide Alert-Triangle icon in a rose red theme)
-    *   **Settings Saved Successfully** (Lucide Check icon in an emerald green theme)
-    *   **Telemetry Telecommunication Info** (Lucide Info icon in a blue theme)
+### 3. Agentic Self-Correction & Refinement Loops (Self-Correlation)
+*   Implemented self-correction mechanics where report drafts undergo automated critique audits.
+*   Configured feedback channels that adapt sections of the output, correcting analytical gaps and format deficiencies before final saving.
 
-### 4. Database Optimization & Startup Concurrency Fixes
-*   Created a daemon pre-warming background thread (`_prewarm_chromadb`) at application startup in `shared_theme.py`.
-*   This thread synchronously loads the sentence-transformers (`all-MiniLM-L6-v2`) embedding model weights into memory before the user triggers the first research query, eliminating the lag during the first memory saving action.
-*   Verified compilation and syntax checking on all changed front-end pages to ensure a zero-error runtime.
+### 4. AI Memory Bank Dashboard View
+*   Designed and built a dedicated vector storage explorer page to inspect active collections in real time.
+*   Structured custom collapsible memory cards featuring a premium green theme, inline folder icons, calendar-clock badges, and unique identification badges.
+
+### 5. Database Optimization & Startup Concurrency Fixes
+*   Created an asynchronous pre-warming background thread at application startup to pre-load embedding model weights, eliminating the saving delay on the first query.
+*   Verified compilation and syntax checking on all changed front-end dashboard pages to ensure a stable, error-free runtime.
 
 ---
 
@@ -48,24 +75,24 @@ The objective of this project is to develop an Autonomous Multi-Agent Research A
 | :--- | :--- |
 | **Python 3.11** | Core development runtime & syntax validation |
 | **Streamlit** | Multi-page SaaS dashboard & page routing |
-| **Groq LLM API** | Low-latency agent reasoning (`Llama-3.3-70B`) |
+| **Groq LLM API** | Low-latency agent reasoning |
 | **ChromaDB** | Vector database for storing and querying memories |
-| **Sentence Transformers** | Hugging Face embedding pipeline (`all-MiniLM-L6-v2`) |
+| **Sentence Transformers** | Text embedding generation pipeline |
 | **Lucide SVGs** | Custom micro-animations & layout icons |
 | **Git & GitHub** | Version control & remote repository management |
 
 ---
 
 ## ⚠️ Reason for Incomplete Work
-Advanced integrations—specifically connecting the Researcher Agent to live academic databases (like arXiv/ADS), full-length PDF data chunking engines, and multi-turn correction loops—are currently undergoing modular testing and will be merged into the active pipeline during Week 3.
+Advanced integrations—specifically connecting the Researcher Agent to live academic databases (like ADS), full-length document data chunking engines, and multi-turn correction loops—are currently undergoing modular testing and will be merged into the active pipeline during Week 3.
 
 ---
 
 ## 🎯 Plans for Next Week (Week-3)
 1.  **Academic Search API Integration:** Connect the Researcher to professional repositories (like Semantic Scholar or arXiv APIs) to extract peer-reviewed sources.
-2.  **Full-Length PDF Parsing:** Implement a sliding window chunking algorithm using PDF text/table extractors to process long scientific articles.
-3.  **LaTeX & BibTeX Export Engine:** Build exporting layouts in the Report Agent to compile files into LaTeX templates (`.tex`) and BibTeX databases (`.bib`).
-4.  **Multi-User Context Spaces:** Partition ChromaDB vector spaces into isolated workspaces to keep research contexts separate and highly relevant.
+2.  **Full-Length Document Parsing:** Implement a sliding window chunking algorithm using document text/table extractors to process long scientific articles.
+3.  **LaTeX & BibTeX Export Engine:** Build exporting layouts in the Report Agent to compile files into LaTeX templates and BibTeX databases.
+4.  **Multi-User Context Spaces:** Partition vector spaces into isolated workspaces to keep research contexts separate and highly relevant.
 
 ---
 
