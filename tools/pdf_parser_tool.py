@@ -405,7 +405,7 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
     print(f"[*] PDF Ingestion: Successfully ingested '{filename}' (Title: '{title}', {len(chunks)} chunks, {len(parsed_data['tables'])} tables).")
     return record
 
-def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.20) -> tuple:
+def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.40) -> tuple:
     """
     Queries the pdf_documents collection in ChromaDB for chunks related to a search query.
     Returns formatted context block and raw retrieved chunk items.
@@ -467,7 +467,13 @@ def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0
         
         for idx, chunk in enumerate(retrieved_chunks, start=1):
             meta = chunk["metadata"]
-            context_lines.append(f"[{idx}] Paper: {meta.get('title')} (File: {meta.get('source_file')}) | Section: {meta.get('section')}")
+            title = meta.get("title", "PDF Document")
+            filename = meta.get("source_file", "document.pdf")
+            import urllib.parse
+            safe_filename = urllib.parse.quote(filename)
+            pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+            
+            context_lines.append(f"[{idx}] Paper Title: {title} | Source URL: {pdf_url} | Section: {meta.get('section')}")
             context_lines.append(f"    Relevance: {chunk['similarity_pct']}")
             context_lines.append(f"    Excerpt: {chunk['document']}")
             context_lines.append("")

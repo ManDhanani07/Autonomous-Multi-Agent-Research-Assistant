@@ -86,8 +86,11 @@ def create_research_prompt(topic: str,
             if url.startswith("http"):
                 # Real academic URL — render as clickable link
                 references_block += f"{i}. [{title}]({url})\n"
+            elif url.startswith("/app/static/") or url.startswith("/static/"):
+                # Local served PDF link
+                clean_title = title.replace("[PDF Library] ", "").strip()
+                references_block += f"{i}. 📄 [{clean_title}]({url}) _(from your PDF library)_\n"
             else:
-                # PDF Library entry — show clean title only (no raw filename)
                 clean_title = title.replace("[PDF Library] ", "").strip()
                 references_block += f"{i}. 📄 {clean_title} _(from your PDF library)_\n"
 
@@ -245,7 +248,7 @@ def generate_research(topic: str, plan: dict = None) -> dict:
     pdf_context, retrieved_pdf_chunks = "", []
     try:
         from tools.pdf_parser_tool import search_pdf_context
-        pdf_context, retrieved_pdf_chunks = search_pdf_context(topic, n_results=5, min_similarity=0.20)
+        pdf_context, retrieved_pdf_chunks = search_pdf_context(topic, n_results=5, min_similarity=0.40)
         if retrieved_pdf_chunks:
             print(f"[PDF Memory Injection] Context successfully retrieved from {len(retrieved_pdf_chunks)} chunks.")
         else:
@@ -284,7 +287,10 @@ def generate_research(topic: str, plan: dict = None) -> dict:
             title = meta.get("title", file_name)
             if file_name not in seen_pdf_sources:
                 seen_pdf_sources.add(file_name)
-                source_urls.append({"title": f"[PDF Library] {title}", "url": f"Uploaded PDF: {file_name}"})
+                import urllib.parse
+                safe_filename = urllib.parse.quote(file_name)
+                pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+                source_urls.append({"title": f"[PDF Library] {title}", "url": pdf_url})
 
         for p in retrieved_papers:
             url = p.get("url", "")
@@ -323,7 +329,10 @@ def generate_research(topic: str, plan: dict = None) -> dict:
             title = meta.get("title", file_name)
             if file_name not in seen_pdf_sources:
                 seen_pdf_sources.add(file_name)
-                source_urls.append({"title": f"[PDF Library] {title}", "url": f"Uploaded PDF: {file_name}"})
+                import urllib.parse
+                safe_filename = urllib.parse.quote(file_name)
+                pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+                source_urls.append({"title": f"[PDF Library] {title}", "url": pdf_url})
 
         for r in (web_results or []):
             url   = r.get("url", "")

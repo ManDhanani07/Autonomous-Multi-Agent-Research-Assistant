@@ -55,16 +55,16 @@ def strip_fake_links(text: str) -> str:
     Removes hallucinated markdown hyperlinks [text](url) from the report body.
     Preserves:
       - Real http/https URLs: [title](https://...) → kept as clickable link
-      - PDF Library references: [PDF Library] ... → kept as-is
-    Only strips links where the URL is not a real http address.
+      - Local static PDF URLs: [title](/app/static/...) → kept as clickable link
+    Only strips links where the URL is not a real http address or local static path.
     """
     import re
-    # Keep real http/https links intact, strip everything else
+    # Keep real links and local PDF paths intact, strip everything else
     def replacer(m):
         link_text = m.group(1)
         url = m.group(2)
-        if url.startswith("http://") or url.startswith("https://"):
-            return m.group(0)  # keep real links
+        if url.startswith("http://") or url.startswith("https://") or url.startswith("/app/static/") or url.startswith("/static/"):
+            return m.group(0)  # keep real links and local served PDF links
         return link_text      # strip fake/invented links
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', replacer, text)
     return text
@@ -113,14 +113,21 @@ with tab_pdf:
     if uploaded_file is not None:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Process & Ingest Paper", key="ingest_pdf_button"):
-            # Set up save path
+            # Set up save paths
             database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database")
             upload_dir = os.path.join(database_dir, "uploaded_pdfs")
             os.makedirs(upload_dir, exist_ok=True)
             temp_path = os.path.join(upload_dir, uploaded_file.name)
             
-            # Save file
+            # Save file to database
             with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+                
+            # Save file to static for serving
+            static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "uploaded_pdfs")
+            os.makedirs(static_dir, exist_ok=True)
+            static_path = os.path.join(static_dir, uploaded_file.name)
+            with open(static_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
                 
             # Ingest to Chroma
@@ -191,6 +198,29 @@ with tab_pdf:
                     unsafe_allow_html=True
                 )
                 st.markdown(f"**Extracted Sections:** {sections_str}")
+                
+                # Add View/Download buttons
+                filename = paper.get("filename")
+                import urllib.parse
+                safe_filename = urllib.parse.quote(filename)
+                pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+                
+                col_view, col_dl = st.columns([1, 1])
+                with col_view:
+                    st.markdown(f"<a href='{pdf_url}' target='_blank' style='text-decoration:none;'><button style='width:100%; padding:8px 16px; background-color:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.4); border-radius:6px; color:#a5b4fc; font-weight:600; cursor:pointer;'>👁️ View PDF in Browser</button></a>", unsafe_allow_html=True)
+                with col_dl:
+                    upload_dir = os.path.join(database_dir, "uploaded_pdfs")
+                    pdf_path = os.path.join(upload_dir, filename)
+                    if os.path.exists(pdf_path):
+                        with open(pdf_path, "rb") as f:
+                            pdf_data = f.read()
+                        st.download_button(
+                            label="📥 Download PDF",
+                            data=pdf_data,
+                            file_name=filename,
+                            mime="application/pdf",
+                            key=f"dl_{filename}"
+                        )
                 st.markdown("---")
                 st.markdown(f"**Summary Preview:**\n{paper.get('summary')}")
     else:
