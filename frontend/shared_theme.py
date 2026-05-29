@@ -2,6 +2,7 @@ import streamlit as st
 import base64
 import re
 import threading
+import time
 
 @st.cache_resource
 def _prewarm_chromadb():
@@ -567,6 +568,65 @@ div[data-testid="element-container"]:has(div[data-testid="stIframe"]) {
     # Render the unified sidebar structure
     with st.sidebar:
         st.markdown(f"<h2 style='display: flex; align-items: center; gap: 10px; color: #ffffff;'>{ICON_NETWORK} NEXUS ENGINE</h2>", unsafe_allow_html=True)
+        st.markdown("---")
+        
+        # Initialize session state for workspace if not exists
+        if "active_workspace" not in st.session_state:
+            st.session_state.active_workspace = "default"
+
+        # Workspace selector section
+        st.markdown("<span style='font-size: 0.85rem; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;'>Active Workspace</span>", unsafe_allow_html=True)
+        # Active workspace badge
+        st.markdown(
+            f"<div style='margin-top: 8px; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(99, 102, 241, 0.15); color: #818cf8; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.25); font-weight: 600; font-size: 0.85rem;'>"
+            f"<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'/></svg> {st.session_state.active_workspace.upper()}</div>",
+            unsafe_allow_html=True
+        )
+
+        from memory.chroma_store import list_workspaces, initialize_chroma
+        try:
+            workspaces = list_workspaces()
+        except Exception:
+            workspaces = ["default"]
+
+        if st.session_state.active_workspace not in workspaces:
+            workspaces.append(st.session_state.active_workspace)
+            workspaces = sorted(list(set(workspaces)))
+
+        # Workspace Selector dropdown
+        selected_ws = st.selectbox(
+            "Switch Workspace",
+            options=workspaces,
+            index=workspaces.index(st.session_state.active_workspace),
+            key="workspace_select_dropdown_widget",
+            label_visibility="collapsed"
+        )
+        if selected_ws != st.session_state.active_workspace:
+            st.session_state.active_workspace = selected_ws
+            st.rerun()
+
+        # Create Workspace Option
+        st.markdown("<span style='font-size: 0.75rem; font-weight: 600; color: #52525b; text-transform: uppercase; letter-spacing: 0.05em;'>Create Workspace</span>", unsafe_allow_html=True)
+        new_ws = st.text_input(
+            "New workspace name",
+            placeholder="e.g. biology_project",
+            key="workspace_create_text_input_widget",
+            label_visibility="collapsed"
+        )
+        if st.button("Create", key="workspace_create_button_widget"):
+            if new_ws.strip():
+                clean_ws = new_ws.strip()
+                try:
+                    initialize_chroma(workspace=clean_ws)
+                    st.session_state.active_workspace = clean_ws
+                    st.success(f"Workspace '{clean_ws}' created!")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.error("Name cannot be empty.")
+
         st.markdown("---")
         
         # System Status

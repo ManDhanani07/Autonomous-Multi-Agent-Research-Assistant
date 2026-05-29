@@ -10,7 +10,6 @@ import json
 import time
 import logging
 import fitz  # PyMuPDF
-import pdfplumber
 from datetime import datetime
 
 # Setup module logger
@@ -161,35 +160,37 @@ def extract_pdf_text_and_sections(pdf_path: str) -> dict:
 
 def extract_tables_as_markdown(pdf_path: str) -> list:
     """
-    Extracts tables from a PDF using pdfplumber and formats them as markdown tables.
+    Extracts tables from a PDF using PyMuPDF and formats them as markdown tables.
     """
     tables_md = []
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page_num, page in enumerate(pdf.pages, start=1):
-                tables = page.extract_tables()
-                for table in tables:
-                    if not table or not any(table):
-                        continue
-                        
-                    # Build header row
-                    headers = [str(cell or "").strip() for cell in table[0]]
-                    headers = [h if h else f"Column {i+1}" for i, h in enumerate(headers)]
+        doc = fitz.open(pdf_path)
+        for page_num, page in enumerate(doc, start=1):
+            tables = page.find_tables()
+            for tab_idx, table in enumerate(tables.tables):
+                data = table.extract()
+                if not data or not any(data):
+                    continue
                     
-                    md_rows = []
-                    md_rows.append("| " + " | ".join(headers) + " |")
-                    md_rows.append("| " + " | ".join(["---"] * len(headers)) + " |")
+                # Build header row
+                headers = [str(cell or "").strip() for cell in data[0]]
+                headers = [h if h else f"Column {i+1}" for i, h in enumerate(headers)]
+                
+                md_rows = []
+                md_rows.append("| " + " | ".join(headers) + " |")
+                md_rows.append("| " + " | ".join(["---"] * len(headers)) + " |")
+                
+                # Build data rows
+                for row in data[1:]:
+                    cells = [str(cell or "").strip().replace("\n", " ").replace("|", "\\|") for cell in row]
+                    if len(cells) < len(headers):
+                        cells += [""] * (len(headers) - len(cells))
+                    elif len(cells) > len(headers):
+                        cells = cells[:len(headers)]
+                    md_rows.append("| " + " | ".join(cells) + " |")
                     
-                    # Build data rows
-                    for row in table[1:]:
-                        cells = [str(cell or "").strip().replace("\n", " ").replace("|", "\\|") for cell in row]
-                        if len(cells) < len(headers):
-                            cells += [""] * (len(headers) - len(cells))
-                        elif len(cells) > len(headers):
-                            cells = cells[:len(headers)]
-                        md_rows.append("| " + " | ".join(cells) + " |")
-                        
-                    tables_md.append(f"### Table on Page {page_num}\n" + "\n".join(md_rows))
+                tables_md.append(f"### Table {tab_idx+1} on Page {page_num}\n" + "\n".join(md_rows))
+        doc.close()
     except Exception as e:
         logger.warning(f"Table extraction failed: {e}")
         
@@ -316,12 +317,12 @@ Provide a concise, high-level executive summary of this paper (max 200 words) hi
     fallback = abstract if abstract else introduction
     return fallback[:300] + "..." if len(fallback) > 300 else fallback
 
-def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic") -> dict:
+def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic", workspace: str = "default") -> dict:
     """
     Orchestrates the ingestion workflow:
     Parses PDF -> Chunks text -> Stores in ChromaDB -> Generates metadata cache.
     """
-    print(f"[*] PDF Ingestion: Initializing parsing for '{filename}'...")
+    print(f"[*] PDF Ingestion: Initializing parsing for '{filename}' in workspace '{workspace}'...")
     parsed_data = extract_pdf_text_and_sections(pdf_path)
     title = parsed_data["title"]
     sections = parsed_data["sections"]
@@ -333,18 +334,22 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
     # 2. Store chunks in ChromaDB dedicated pdf_documents collection
     print(f"[*] PDF Ingestion: Storing {len(chunks)} chunks in ChromaDB...")
     try:
-        from memory.chroma_store import get_chroma_client
+        from memory.chroma_store import get_chroma_client, get_collection_name_for_workspace
         client = get_chroma_client()
         from chromadb.utils import embedding_functions
         fast_ef = embedding_functions.DefaultEmbeddingFunction()
         
+        collection_name = get_collection_name_for_workspace(workspace, suffix="_pdfs")
         pdf_collection = client.get_or_create_collection(
-            name="pdf_documents",
+            name=collection_name,
             embedding_function=fast_ef,
             metadata={"hnsw:space": "cosine"}
         )
         
-        # Ingest chunks
+        # Ingest chunks in a single batch operation
+        batch_documents = []
+        batch_metadatas = []
+        batch_ids = []
         for idx, chunk in enumerate(chunks):
             chunk_id = f"pdf_{filename.replace('.', '_')}_chunk_{idx}"
             chunk_text = chunk["text"]
@@ -356,13 +361,19 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
                 "title": title,
                 "section": chunk_section,
                 "chunk_index": str(idx),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "workspace": workspace
             }
             
+            batch_documents.append(chunk_text)
+            batch_metadatas.append(metadata)
+            batch_ids.append(chunk_id)
+            
+        if batch_documents:
             pdf_collection.add(
-                documents=[chunk_text],
-                metadatas=[metadata],
-                ids=[chunk_id]
+                documents=batch_documents,
+                metadatas=batch_metadatas,
+                ids=batch_ids
             )
     except Exception as e:
         logger.error(f"Failed to store PDF chunks in ChromaDB: {e}", exc_info=True)
@@ -395,28 +406,30 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
         "table_count": len(parsed_data["tables"]),
         "reference_count": len(parsed_data["references"]),
         "summary": summary,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "workspace": workspace
     }
     metadata_list.append(record)
     
     with open(METADATA_FILE, "w", encoding="utf-8") as f:
         json.dump(metadata_list, f, indent=4)
         
-    print(f"[*] PDF Ingestion: Successfully ingested '{filename}' (Title: '{title}', {len(chunks)} chunks, {len(parsed_data['tables'])} tables).")
+    print(f"[*] PDF Ingestion: Successfully ingested '{filename}' in workspace '{workspace}' (Title: '{title}', {len(chunks)} chunks, {len(parsed_data['tables'])} tables).")
     return record
 
-def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.40) -> tuple:
+def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.40, workspace: str = "default") -> tuple:
     """
     Queries the pdf_documents collection in ChromaDB for chunks related to a search query.
     Returns formatted context block and raw retrieved chunk items.
     """
     try:
-        from memory.chroma_store import get_chroma_client
+        from memory.chroma_store import get_chroma_client, get_collection_name_for_workspace
         client = get_chroma_client()
         
+        collection_name = get_collection_name_for_workspace(workspace, suffix="_pdfs")
         # Check if collection exists
         try:
-            collection = client.get_collection(name="pdf_documents")
+            collection = client.get_collection(name=collection_name)
         except Exception:
             return "", []
             

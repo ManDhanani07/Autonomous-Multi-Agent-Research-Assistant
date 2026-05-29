@@ -212,7 +212,7 @@ def clean_report_headings(text: str) -> str:
 # Main Agent Function
 # ─────────────────────────────────────────────────────────────────────────────
 
-def generate_research(topic: str, plan: dict = None) -> dict:
+def generate_research(topic: str, plan: dict = None, workspace: str = "default") -> dict:
     """
     RAG-enhanced research generation pipeline.
 
@@ -223,6 +223,7 @@ def generate_research(topic: str, plan: dict = None) -> dict:
     Args:
         topic (str): The research subject.
         plan (dict): The Planner Agent's JSON roadmap.
+        workspace (str): The active workspace for isolated memories.
 
 
     Returns:
@@ -237,13 +238,14 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         return {"report": "Error: Please provide a valid research topic.", "memories": []}
 
     # ── STEP 0: Retrieve related memories (RAG) ───────────────────────────
-    print(f"\n[Memory Retrieval] Searching semantic memory for: '{topic}'")
+    print(f"\n[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{topic}'")
     try:
         from memory.memory_manager import search_memory_context
         memory_context, retrieved_memories = search_memory_context(
             query=topic,
             n_results=3,
-            min_similarity=0.20
+            min_similarity=0.20,
+            workspace=workspace
         )
         if retrieved_memories:
             print(f"[Memory Injection] Context successfully injected into Researcher Agent.")
@@ -254,11 +256,11 @@ def generate_research(topic: str, plan: dict = None) -> dict:
         memory_context, retrieved_memories = "", []
 
     # ── STEP 0.8: Query Ingested PDF Documents (RAG) ─────────────────────
-    print(f"\n[PDF Memory Retrieval] Searching ingested documents for: '{topic}'")
+    print(f"\n[PDF Memory Retrieval] Searching ingested documents in workspace '{workspace}' for: '{topic}'")
     pdf_context, retrieved_pdf_chunks = "", []
     try:
         from tools.pdf_parser_tool import search_pdf_context
-        pdf_context, retrieved_pdf_chunks = search_pdf_context(topic, n_results=5, min_similarity=0.40)
+        pdf_context, retrieved_pdf_chunks = search_pdf_context(topic, n_results=5, min_similarity=0.40, workspace=workspace)
         if retrieved_pdf_chunks:
             print(f"[PDF Memory Injection] Context successfully retrieved from {len(retrieved_pdf_chunks)} chunks.")
         else:
@@ -390,17 +392,67 @@ def generate_research(topic: str, plan: dict = None) -> dict:
 
     if report.startswith("⚠️"):
         print(f"[Researcher Agent] API quota/rate-limit issue detected: {report[:120]}...")
-        return {"report": report, "memories": retrieved_memories, "academic_papers": retrieved_papers, "fallback_used": fallback_used}
+        return {"report": report, "memories": retrieved_memories, "academic_papers": retrieved_papers, "fallback_used": fallback_used, "sources": []}
 
     # Clean headings to ensure integer numbering (1, 2, 3...)
     report = clean_report_headings(report)
+
+    # ── STEP 5: Compile Unified Citations Metadata ────────────────────────
+    sources = []
+    from datetime import datetime
+    import urllib.parse
+    
+    # 1. Add matching PDF files as sources
+    seen_pdf_files = set()
+    for chunk in retrieved_pdf_chunks:
+        meta = chunk.get("metadata", {})
+        file_name = meta.get("source_file", "PDF Document")
+        if file_name not in seen_pdf_files:
+            seen_pdf_files.add(file_name)
+            title = meta.get("title") or file_name.replace(".pdf", "").replace("_", " ").title()
+            safe_filename = urllib.parse.quote(file_name)
+            pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
+            sources.append({
+                "type": "pdf",
+                "title": title,
+                "authors": ["PDF Library Ingest"],
+                "year": datetime.now().year,
+                "url": pdf_url,
+                "venue": "PDF Library"
+            })
+
+    # 2. Add academic papers
+    for p in (retrieved_papers or []):
+        sources.append({
+            "type": "academic",
+            "title": p.get("title", "No Title"),
+            "authors": p.get("authors") or ["Unknown Author"],
+            "year": p.get("year") or 2026,
+            "url": p.get("url", "#"),
+            "venue": p.get("venue") or p.get("source") or "Academic Literature",
+            "doi": p.get("doi") or ""
+        })
+
+    # 3. Add web results if fallback was used
+    web_results_safe = locals().get("web_results") or []
+    if fallback_used and web_results_safe:
+        for r in web_results_safe:
+            sources.append({
+                "type": "web",
+                "title": r.get("title", "Web Resource"),
+                "authors": ["Web Resource"],
+                "year": "n.d.",
+                "url": r.get("url", "#"),
+                "venue": urllib.parse.urlparse(r.get("url", "")).netloc or "Web Search"
+            })
 
     return {
         "report": report,
         "memories": retrieved_memories,
         "academic_papers": retrieved_papers,
         "fallback_used": fallback_used,
-        "pdf_chunks": retrieved_pdf_chunks   # PDF RAG chunks for UI display
+        "pdf_chunks": retrieved_pdf_chunks,   # PDF RAG chunks for UI display
+        "sources": sources                     # Standardized citation sources
     }
 
 

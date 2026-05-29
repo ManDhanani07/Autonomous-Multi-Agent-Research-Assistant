@@ -16,6 +16,23 @@
         "timestamp": "2026-05-29T14:15:53.403711"
     },
     {
+        "filename": "Enhancing_Biology_Laboratory_Learning_Student_Perceptions_of_Performing_Heart_Dissection_With_Virtual_Reality.pdf",
+        "title": "Enhancing Biology Laboratory Learning: Student Perceptions of Performing Heart Dissection With Virtual Reality",
+        "chunk_count": 42,
+        "sections": [
+            "Header/Title",
+            "Abstract",
+            "Introduction",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 0,
+        "reference_count": 34,
+        "summary": "This study investigates the effectiveness of using Virtual Reality (VR) technology, specifically the Oculus Quest 2, to enhance biology laboratory learning. The research focuses on student perceptions of performing a virtual heart dissection in a mid-sized biology classroom setting. A total of 23 students from a Singaporean secondary school participated in the study. The core objective is to assess the potential of VR technology in augmenting traditional in-person laboratory settings and evaluating its feasibility as a replacement. The study's key contributions include insights into the effectiveness of VR in stimulating student interest and engagement, and its potential to transform the traditional learning experience in biology. The findings have important implications for the future of educational methodologies in science and technology subjects, offering a more interactive and engaging approach to education in biology.",
+        "timestamp": "2026-05-29T17:46:33.287869",
+        "workspace": "default"
+    },
+    {
         "filename": "Internet_of_Things_IoT_for_Next-Generation_Smart_Systems_A_Review_of_Current_Challenges_Future_Trends_and_Prospects_for_Emerging_5G-IoT_Scenarios.pdf",
         "title": "SPECIAL SECTION ON ANTENNA AND PROPAGATION FOR 5G AND BEYOND",
         "chunk_count": 73,
@@ -27,8 +44,9 @@
         ],
         "table_count": 4,
         "reference_count": 117,
-        "summary": "This paper reviews the current challenges, future trends, and prospects of the Internet of Things (IoT) for next-generation smart systems. The core objective is to envision the future of IoT, which is expected to connect around 28 billion smart devices worldwide by 2021. The methodology involves analyzing recent developments in wireless sensor networks, telecommunications, and informatics. The paper highlights the pivotal role of IoT in enhancing living standards and professional applications, such as e-health, smart homes, automation, and remote monitoring. Key contributions include discussing the integration of various technologies, including sensors, embedded systems, and cyber-physical systems, to achieve an all-communicating world with increased data volume, device connectivity, and reduced latency. The paper aims to provide insights into the future of IoT and its potential to transform various aspects of life and industry.",
-        "timestamp": "2026-05-29T14:39:24.332177"
+        "summary": "This paper explores the concept of the Internet of Things (IoT) and its role in enabling pervasive intelligence. The IoT is envisioned to enhance living standards and professional applications through technologies such as e-health, smart homes, and automation. With an expected 28 billion smart devices connected worldwide by 2021, the paper discusses the current challenges and future trends in IoT. The authors highlight the need for increased data volume, connected devices, and user data-rate, as well as reduced latency and extended battery life. The paper aims to provide a review of current challenges, future trends, and prospects in IoT, with a focus on the integration of sensors, embedded systems, and cyber-physical systems. The key contributions of the paper are expected to be a comprehensive overview of the IoT landscape and its potential applications, as well as insights into the future directions of IoT research.",
+        "timestamp": "2026-05-29T18:20:58.153727",
+        "workspace": "physics_project"
     },
     {
         "filename": "verify_test_paper.pdf",
@@ -45,7 +63,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve accuracy and efficiency in drug discovery. By leveraging GCN, the approach can effectively capture complex molecular structures and relationships, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a valuable tool for the pharmaceutical industry and contributing to the advancement of drug discovery research.",
-        "timestamp": "2026-05-29T15:26:37.715968"
+        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, thereby reducing costs. The methodology involves utilizing GCN to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging the capabilities of GCN, this approach aims to provide a more effective and reliable method for predicting molecular properties, ultimately accelerating the development of new drugs. The use of GCN enables the model to learn complex molecular structures and relationships, leading to more accurate predictions and better decision-making in the drug discovery process.",
+        "timestamp": "2026-05-29T18:24:19.449074",
+        "workspace": "default"
     }
 ]

@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 import logging
 import threading
@@ -20,13 +21,25 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 # meaning it can find related ideas based on meaning, not just exact keywords.
 # -------------------------------------------------------------------
 
-# Set up the persistent storage location. This ensures memory isn't lost
-# when the application stops running.
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
+# Set up the persistent storage location. To avoid SQLite concurrent lock panics
+# on Windows (especially when tests run alongside the Streamlit server), we direct
+# test scripts to a separate database folder.
+is_testing = False
+if sys.argv and len(sys.argv) > 0:
+    prog_name = os.path.basename(sys.argv[0])
+    if "verify_tests" in prog_name or "test_" in prog_name:
+        is_testing = True
+if os.environ.get("TESTING") == "true":
+    is_testing = True
+
+if is_testing:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db_test")
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 
 _client_lock = threading.Lock()
 _cached_client = None
-_cached_collection = None
+_cached_collections = {}
 
 def get_chroma_client():
     """
@@ -40,77 +53,110 @@ def get_chroma_client():
                 _cached_client = chromadb.PersistentClient(path=DB_PATH)
     return _cached_client
 
-def initialize_chroma():
+def get_collection_name_for_workspace(workspace: str, suffix: str = "") -> str:
     """
-    Initializes the ChromaDB client and creates a collection for our memories.
-    A collection is similar to a "table" in a normal database.
+    Standardizes and sanitizes workspace names to valid ChromaDB collection names.
+    - Default workspace -> 'research_memory' or 'pdf_documents' (keeps backward compatibility).
+    - Custom workspace -> 'ws_{sanitized}' or 'ws_{sanitized}_pdfs'.
     """
-    global _cached_collection
-    if _cached_collection is not None:
-        return _cached_collection
+    if not workspace or workspace.lower() == "default":
+        if suffix == "_pdfs":
+            return "pdf_documents"
+        return "research_memory"
+        
+    import re
+    # Sanitize workspace name: lowercase, alpha-numeric, underscores and hyphens only
+    clean = workspace.lower().strip()
+    clean = re.sub(r'[^a-z0-9_-]', '_', clean)
+    clean = re.sub(r'_+', '_', clean)
+    clean = re.sub(r'-+', '-', clean)
+    
+    # Ensure starts/ends with alphanumeric
+    if not clean or not clean[0].isalnum():
+        clean = "ws_" + clean
+    if not clean[-1].isalnum():
+        clean = clean + "_ws"
+        
+    clean = clean[:50]
+    while len(clean) < 3:
+        clean = clean + "_ws"
+        
+    if suffix == "_pdfs":
+        return f"ws_{clean}_pdfs"
+    return f"ws_{clean}"
+
+def initialize_chroma(workspace: str = "default"):
+    """
+    Initializes the ChromaDB client and creates/returns a collection for the workspace.
+    """
+    global _cached_collections
+    collection_name = get_collection_name_for_workspace(workspace)
+    
+    if collection_name in _cached_collections:
+        return _cached_collections[collection_name]
         
     client = get_chroma_client()
-    
-    # We use Chroma's default embedding function which uses 'all-MiniLM-L6-v2'
-    # under the hood, but runs it via ONNX Runtime instead of PyTorch.
-    # This is massively faster for CPU execution during both RAG retrieval and saving.
     from chromadb.utils import embedding_functions
     fast_ef = embedding_functions.DefaultEmbeddingFunction()
     
-    # Get or create the collection named "research_memory"
-    _cached_collection = client.get_or_create_collection(
-        name="research_memory",
+    collection = client.get_or_create_collection(
+        name=collection_name,
         embedding_function=fast_ef,
-        metadata={"hnsw:space": "cosine"} # Cosine similarity measures the angle between vectors (meaning)
+        metadata={"hnsw:space": "cosine"}
     )
     
-    return _cached_collection
+    _cached_collections[collection_name] = collection
+    return collection
 
-def store_research_memory(doc_id: str, document_text: str, metadata: dict):
+def list_workspaces() -> list[str]:
     """
-    Saves a piece of research into the vector database.
-    
-    Args:
-        doc_id (str): A unique identifier for the document.
-        document_text (str): The actual text content to be vectorized and saved.
-        metadata (dict): Extra information (like topic, timestamp, or document type) 
-                         so we can filter results later.
+    Queries ChromaDB client to discover all active workspaces based on collection naming.
     """
-    collection = initialize_chroma()
+    try:
+        client = get_chroma_client()
+        collections = client.list_collections()
+        workspaces = ["default"]
+        for col in collections:
+            if col.name == "research_memory" or col.name == "pdf_documents":
+                continue
+            if col.name.startswith("ws_"):
+                name = col.name[3:]
+                if name.endswith("_pdfs"):
+                    name = name[:-5]
+                workspaces.append(name)
+        return sorted(list(set(workspaces)))
+    except Exception as e:
+        print(f"[ChromaDB Error] Failed to list workspaces: {e}")
+        return ["default"]
+
+def store_research_memory(doc_id: str, document_text: str, metadata: dict, workspace: str = "default"):
+    """
+    Saves a piece of research into the vector database workspace collection.
+    """
+    collection = initialize_chroma(workspace=workspace)
     
     try:
-        # Add the document to our database.
-        # The embedding_function automatically converts 'document_text' into a vector!
         collection.add(
             documents=[document_text],
             metadatas=[metadata],
             ids=[doc_id]
         )
-        print(f"[ChromaDB] Successfully saved memory: {doc_id}")
+        print(f"[ChromaDB] Successfully saved memory: {doc_id} in workspace: {workspace}")
     except Exception as e:
-        print(f"[ChromaDB Error] Failed to save memory: {e}")
+        print(f"[ChromaDB Error] Failed to save memory to workspace {workspace}: {e}")
 
-def search_related_memories(query_text: str, n_results: int = 2):
+def search_related_memories(query_text: str, n_results: int = 2, workspace: str = "default"):
     """
-    Performs a semantic search to find past research related to the new query.
-    
-    Args:
-        query_text (str): The new topic or question.
-        n_results (int): How many past documents to retrieve.
-        
-    Returns:
-        list: A list of dictionaries containing the retrieved documents and their metadata.
+    Performs a semantic search to find past research related to the new query in the workspace.
     """
-    collection = initialize_chroma()
+    collection = initialize_chroma(workspace=workspace)
     
     try:
-        # Query the collection. It converts query_text to a vector and finds nearest neighbors.
         results = collection.query(
             query_texts=[query_text],
             n_results=n_results
         )
         
-        # Format the results into a more usable list of dictionaries
         retrieved_memories = []
         if results and results['documents'] and len(results['documents'][0]) > 0:
             for i in range(len(results['documents'][0])):
@@ -125,20 +171,19 @@ def search_related_memories(query_text: str, n_results: int = 2):
         return retrieved_memories
         
     except Exception as e:
-        print(f"[ChromaDB Error] Failed to search memory: {e}")
+        print(f"[ChromaDB Error] Failed to search memory in workspace {workspace}: {e}")
         return []
 
-def get_all_memories():
+def get_all_memories(workspace: str = "default"):
     """
-    Retrieves all memories currently stored in the vector database.
-    Does not require loading the heavy sentence-transformers embedding function.
+    Retrieves all memories currently stored in the workspace collection.
     """
     try:
         client = get_chroma_client()
+        collection_name = get_collection_name_for_workspace(workspace)
         try:
-            collection = client.get_collection(name="research_memory")
+            collection = client.get_collection(name=collection_name)
         except Exception:
-            # Collection does not exist yet
             return []
             
         results = collection.get()
@@ -153,100 +198,47 @@ def get_all_memories():
                 }
                 retrieved_memories.append(memory)
                 
-        # Sort by timestamp descending if possible
         retrieved_memories.sort(key=lambda x: x['metadata'].get('timestamp', ''), reverse=True)
         return retrieved_memories
         
     except Exception as e:
-        print(f"[ChromaDB Error] Failed to retrieve all memories: {e}")
+        print(f"[ChromaDB Error] Failed to retrieve all memories for workspace {workspace}: {e}")
         return []
-
 
 # ═══════════════════════════════════════════════════════════════════
 #  RAG RETRIEVAL LAYER  —  added to support the full RAG pipeline
-#  The functions below are the production-grade retrieval interface.
-#  They co-exist alongside the original storage functions above.
 # ═══════════════════════════════════════════════════════════════════
 
-def initialize_collection():
+def initialize_collection(workspace: str = "default"):
     """
     Public alias for initialize_chroma().
-
-    Returns the ChromaDB collection with the sentence-transformer embedding
-    function already attached. Use this as the clean entry-point for any
-    code that needs direct collection access.
-
-    Returns:
-        chromadb.Collection: The 'research_memory' collection, ready to use.
     """
-    return initialize_chroma()
+    return initialize_chroma(workspace=workspace)
 
-
-def add_research_memory(doc_id: str, document_text: str, metadata: dict):
+def add_research_memory(doc_id: str, document_text: str, metadata: dict, workspace: str = "default"):
     """
-    Enhanced wrapper for store_research_memory() with richer logging.
-
-    Saves a vectorized research document into ChromaDB. The embedding function
-    automatically converts document_text into a semantic vector before storage.
-
-    Args:
-        doc_id        (str):  Unique identifier for this memory entry.
-        document_text (str):  Full text to embed and store.
-        metadata      (dict): Structured metadata (topic, timestamp, type, etc.)
+    Enhanced wrapper for store_research_memory() with workspace routing.
     """
-    print(f"[Memory Storage] Encoding and archiving memory: {doc_id}")
-    store_research_memory(doc_id=doc_id, document_text=document_text, metadata=metadata)
-
+    print(f"[Memory Storage] Encoding and archiving memory: {doc_id} in workspace: {workspace}")
+    store_research_memory(doc_id=doc_id, document_text=document_text, metadata=metadata, workspace=workspace)
 
 def retrieve_similar_research(query: str, n_results: int = 3,
-                               min_similarity: float = 0.20) -> list[dict]:
+                               min_similarity: float = 0.20, workspace: str = "default") -> list[dict]:
     """
-    RAG Retrieval Core — finds the top-N semantically similar research records.
-
-    How it works:
-      1. The query string is embedded by the same sentence-transformer model
-         used during storage, producing a 384-dimensional vector.
-      2. ChromaDB performs an approximate nearest-neighbour search using HNSW
-         with cosine similarity as the distance metric.
-      3. Results are ranked by similarity score and filtered by min_similarity.
-
-    Cosine distance → similarity conversion:
-      ChromaDB with hnsw:space=cosine stores distances in [0, 2].
-      distance 0 → identical   (similarity 1.00 = 100 %)
-      distance 1 → orthogonal  (similarity 0.00 =   0 %)
-      distance 2 → opposite    (similarity capped at 0)
-      Formula: similarity = max(0.0, 1.0 - distance)
-
-    Args:
-        query          (str):   The new research topic or question.
-        n_results      (int):   Maximum number of memories to retrieve (default 3).
-        min_similarity (float): Minimum similarity threshold 0–1 (default 0.20).
-                                Results below this are discarded as noise.
-
-    Returns:
-        list[dict]: Each dict contains:
-            - 'id'              (str)   Memory UUID
-            - 'topic'           (str)   Original research topic
-            - 'document'        (str)   Full stored text (truncated for context)
-            - 'metadata'        (dict)  All stored metadata fields
-            - 'similarity_score'(float) 0.0–1.0 similarity to the query
-            - 'similarity_pct'  (str)   Human-readable percentage e.g. "87.3%"
-            - 'distance'        (float) Raw ChromaDB cosine distance
+    RAG Retrieval Core — finds the top-N semantically similar research records in the workspace.
     """
-    print(f"[Memory Retrieval] Searching semantic memory for: '{query}'")
+    print(f"[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{query}'")
 
     try:
-        collection = initialize_chroma()
+        collection = initialize_chroma(workspace=workspace)
 
-        # Guard: ChromaDB errors if n_results > collection size
         total_docs = collection.count()
         if total_docs == 0:
-            print("[Memory Retrieval] Memory bank is empty — no past research found.")
+            print(f"[Memory Retrieval] Memory bank is empty in workspace '{workspace}' — no past research found.")
             return []
 
         actual_n = min(n_results, total_docs)
 
-        # Perform the semantic search
         results = collection.query(
             query_texts=[query],
             n_results=actual_n,
@@ -263,7 +255,6 @@ def retrieve_similar_research(query: str, n_results: int = 3,
             raw_distance = results["distances"][0][i] if results.get("distances") else 1.0
             similarity   = max(0.0, round(1.0 - raw_distance, 4))
 
-            # Filter out memories that are not relevant enough
             if similarity < min_similarity:
                 continue
 
@@ -280,13 +271,12 @@ def retrieve_similar_research(query: str, n_results: int = 3,
                 "distance":        raw_distance,
             })
 
-        # Sort by similarity descending (best match first)
         retrieved.sort(key=lambda x: x["similarity_score"], reverse=True)
 
-        print(f"[Memory Retrieval] Found {len(retrieved)} relevant memories "
+        print(f"[Memory Retrieval] Found {len(retrieved)} relevant memories in workspace '{workspace}' "
               f"(threshold >= {min_similarity * 100:.0f}%).")
         return retrieved
 
     except Exception as e:
-        print(f"[Memory Retrieval Error] Semantic search failed: {e}")
+        print(f"[Memory Retrieval Error] Semantic search failed in workspace '{workspace}': {e}")
         return []

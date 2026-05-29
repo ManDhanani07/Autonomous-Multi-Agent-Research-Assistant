@@ -10,7 +10,7 @@ from memory.chroma_store import store_research_memory, search_related_memories
 # retrieved context so the AI can use it in future tasks.
 # -------------------------------------------------------------------
 
-def save_complete_research(topic: str, full_research: str, summary: str, critique: str):
+def save_complete_research(topic: str, full_research: str, summary: str, critique: str, workspace: str = "default"):
     """
     Saves the Research, Summary, and Critic Analysis together into the memory database.
     
@@ -19,8 +19,9 @@ def save_complete_research(topic: str, full_research: str, summary: str, critiqu
         full_research (str): The output from the Researcher Agent.
         summary (str): The output from the Summarizer Agent.
         critique (str): The output from the Critic Agent.
+        workspace (str): The workspace to archive under.
     """
-    print(f"[*] Memory Manager: Archiving research for topic '{topic}'...")
+    print(f"[*] Memory Manager: Archiving research for topic '{topic}' in workspace '{workspace}'...")
     
     # We combine the most crucial parts for semantic search.
     # The summary is great for searchability, but we also save the full context.
@@ -40,23 +41,25 @@ def save_complete_research(topic: str, full_research: str, summary: str, critiqu
     store_research_memory(
         doc_id=session_id,
         document_text=combined_document,
-        metadata=metadata
+        metadata=metadata,
+        workspace=workspace
     )
 
-def retrieve_related_research(new_topic: str) -> str:
+def retrieve_related_research(new_topic: str, workspace: str = "default") -> str:
     """
     Retrieves previous research related to a new topic and formats it as context.
     
     Args:
         new_topic (str): The new topic we are about to research.
+        workspace (str): The workspace to retrieve from.
         
     Returns:
         str: A formatted string containing past research context, or empty string if none found.
     """
-    print(f"[*] Memory Manager: Searching for past research related to '{new_topic}'...")
+    print(f"[*] Memory Manager: Searching for past research related to '{new_topic}' in workspace '{workspace}'...")
     
     # Search ChromaDB for the top 2 most related past sessions
-    past_memories = search_related_memories(query_text=new_topic, n_results=2)
+    past_memories = search_related_memories(query_text=new_topic, n_results=2, workspace=workspace)
     
     if not past_memories:
         print("[*] Memory Manager: No relevant past memories found.")
@@ -84,7 +87,7 @@ def retrieve_related_research(new_topic: str) -> str:
 # ═══════════════════════════════════════════════════════════════════
 
 def save_research_to_memory(topic: str, full_research: str,
-                             summary: str, critique: str):
+                             summary: str, critique: str, workspace: str = "default"):
     """
     Enhanced memory save function with richer metadata.
 
@@ -99,8 +102,9 @@ def save_research_to_memory(topic: str, full_research: str,
         full_research (str): Full markdown report from the Researcher Agent.
         summary       (str): Executive summary from the Summarizer Agent.
         critique      (str): Quality critique from the Critic Agent.
+        workspace     (str): The workspace to archive under.
     """
-    print(f"[Memory Manager] Saving research session for: '{topic}'")
+    print(f"[Memory Manager] Saving research session for: '{topic}' in workspace: '{workspace}'")
 
     # Build the combined searchable document
     # We prioritise summary + topic at the top for better embedding quality
@@ -125,14 +129,16 @@ def save_research_to_memory(topic: str, full_research: str,
     add_research_memory(
         doc_id=session_id,
         document_text=combined_document,
-        metadata=metadata
+        metadata=metadata,
+        workspace=workspace
     )
     print(f"[Memory Manager] Research memory saved: {session_id}")
 
 
 def search_memory_context(query: str,
                            n_results: int = 3,
-                           min_similarity: float = 0.20
+                           min_similarity: float = 0.20,
+                           workspace: str = "default"
                            ) -> tuple[str, list]:
     """
     RAG Context Builder — retrieves and formats related memories for agent injection.
@@ -149,6 +155,7 @@ def search_memory_context(query: str,
         query          (str):   The new research topic.
         n_results      (int):   Max memories to retrieve (default 3).
         min_similarity (float): Minimum relevance threshold (default 0.20 = 20%).
+        workspace      (str):   The active workspace to retrieve from.
 
     Returns:
         tuple[str, list]:
@@ -157,7 +164,7 @@ def search_memory_context(query: str,
             - memories      (list): Raw memory dicts for UI display (may be empty).
                                     Each dict matches the retrieve_similar_research() schema.
     """
-    print(f"[Memory Retrieval] Searching semantic memory for: '{query}'")
+    print(f"[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{query}'")
 
     from memory.chroma_store import retrieve_similar_research
 
@@ -165,7 +172,8 @@ def search_memory_context(query: str,
         memories = retrieve_similar_research(
             query=query,
             n_results=n_results,
-            min_similarity=min_similarity
+            min_similarity=min_similarity,
+            workspace=workspace
         )
     except Exception as e:
         print(f"[Memory Retrieval Error] Failed to search memory: {e}")

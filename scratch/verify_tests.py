@@ -48,6 +48,7 @@ import_tests = [
     ("agents.planner_agent",        ["generate_plan"]),
     ("memory.chroma_store",         ["get_chroma_client"]),
     ("memory.memory_manager",       ["save_research_to_memory","search_memory_context"]),
+    ("tools.citation_manager",      ["CitationManager"]),
 ]
 
 for mod_name, funcs in import_tests:
@@ -431,6 +432,163 @@ try:
     check(f"pdf_documents has stored chunks", count > 0, f"{count} chunks in ChromaDB")
 except Exception as e:
     check("ChromaDB connectivity", False, str(e)[:100])
+
+# ─────────────────────────────────────────────────────────────────
+# TEST 10: CITATION SYSTEM
+# ─────────────────────────────────────────────────────────────────
+section("TEST 10: Citation System")
+
+try:
+    from tools.citation_manager import CitationManager
+    
+    # 1. Academic Citation
+    source_acad = {
+        "type": "academic",
+        "title": "Attention Is All You Need",
+        "authors": ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar", "Jakob Uszkoreit"],
+        "year": 2017,
+        "url": "https://arxiv.org/abs/1706.03762",
+        "venue": "Advances in Neural Information Processing Systems",
+    }
+    cm_acad = CitationManager([source_acad])
+    s_acad = cm_acad.sources[0]
+    
+    check("Citation: Academic year parsing", s_acad["year"] == 2017)
+    check("Citation: Academic DOI parsing (empty)", s_acad["doi"] == "")
+    
+    apa = cm_acad.get_apa_citation(s_acad)
+    check("Citation: APA format academic", "Vaswani, A." in apa and "(2017)" in apa and "*Advances in Neural Information Processing Systems*" in apa)
+    
+    ieee = cm_acad.get_ieee_citation(s_acad)
+    check("Citation: IEEE format academic", "A. Vaswani" in ieee and "Attention Is All You Need" in ieee)
+    
+    mla = cm_acad.get_mla_citation(s_acad)
+    check("Citation: MLA format academic", "Vaswani, Ashish, et al." in mla)
+    
+    bib = cm_acad.get_bibtex_citation(s_acad)
+    check("Citation: BibTeX format academic", "@article{vaswani2017attention" in bib or "@article{vaswani2017attention" in bib.lower())
+    
+    # 2. PDF Citation
+    source_pdf = {
+        "type": "pdf",
+        "title": "Internet of Things Review of Smart Systems",
+        "authors": ["K. Shafique", "B. A. Khawaja"],
+        "year": 2020,
+        "url": "/app/static/uploaded_pdfs/IoT_Smart_Systems.pdf",
+        "venue": "PDF Library"
+    }
+    cm_pdf = CitationManager([source_pdf])
+    s_pdf = cm_pdf.sources[0]
+    apa_pdf = cm_pdf.get_apa_citation(s_pdf)
+    check("Citation: APA format PDF", "Retrieved from PDF library." in apa_pdf)
+    
+    ieee_pdf = cm_pdf.get_ieee_citation(s_pdf)
+    check("Citation: IEEE format PDF", "[Online]. Available: PDF library." in ieee_pdf)
+    
+    bib_pdf = cm_pdf.get_bibtex_citation(s_pdf)
+    check("Citation: BibTeX format PDF", "@misc{shafique2020internet" in bib_pdf or "@misc{shafique2020internet" in bib_pdf.lower())
+    
+    # 3. Web Citation
+    source_web = {
+        "type": "web",
+        "title": "Gemini 3.5 Flash Documentation",
+        "authors": ["Google DeepMind"],
+        "year": "n.d.",
+        "url": "https://deepmind.google/gemini",
+        "venue": "deepmind.google"
+    }
+    cm_web = CitationManager([source_web])
+    s_web = cm_web.sources[0]
+    
+    apa_web = cm_web.get_apa_citation(s_web)
+    check("Citation: APA format Web", "(n.d.)" in apa_web)
+    
+    bib_web = cm_web.get_bibtex_citation(s_web)
+    check("Citation: BibTeX format Web", "@online{deepmindndgemini" in bib_web)
+    
+    # 4. DOI extraction
+    doi = CitationManager.extract_doi("https://doi.org/10.1109/fiot.2018.8325598")
+    check("Citation: DOI extraction", doi == "10.1109/fiot.2018.8325598")
+    
+except Exception as e:
+    check("Citation system verification", False, str(e))
+
+# ─────────────────────────────────────────────────────────────────
+# TEST 11: WORKSPACE ISOLATION
+# ─────────────────────────────────────────────────────────────────
+section("TEST 11: Workspace Isolation")
+
+try:
+    import uuid
+    from memory.chroma_store import list_workspaces, initialize_chroma, get_collection_name_for_workspace, get_chroma_client
+    from memory.memory_manager import save_research_to_memory, search_memory_context
+    from tools.pdf_parser_tool import search_pdf_context
+
+    ws_alpha = f"verify_alpha_{uuid.uuid4().hex[:6]}"
+    ws_beta = f"verify_beta_{uuid.uuid4().hex[:6]}"
+    
+    col_alpha = initialize_chroma(workspace=ws_alpha)
+    col_beta = initialize_chroma(workspace=ws_beta)
+    
+    workspaces = list_workspaces()
+    check("Workspace: Discovered workspaces list", ws_alpha in workspaces and ws_beta in workspaces)
+    
+    save_research_to_memory(
+        topic="Workspace Isolation Verification",
+        full_research="Mock report contents",
+        summary="Mock summary",
+        critique="Mock critique",
+        workspace=ws_alpha
+    )
+    
+    context_alpha, memories_alpha = search_memory_context(
+        query="Workspace Isolation",
+        n_results=2,
+        min_similarity=0.10,
+        workspace=ws_alpha
+    )
+    check("Workspace: Retrieve memory in designated workspace", len(memories_alpha) > 0)
+    
+    context_beta, memories_beta = search_memory_context(
+        query="Workspace Isolation",
+        n_results=2,
+        min_similarity=0.10,
+        workspace=ws_beta
+    )
+    check("Workspace: Retrieve memory in alternative workspace (should be isolated)", len(memories_beta) == 0)
+
+    client = get_chroma_client()
+    pdf_col_name_alpha = get_collection_name_for_workspace(ws_alpha, suffix="_pdfs")
+    pdf_col_alpha = client.get_or_create_collection(name=pdf_col_name_alpha)
+    
+    pdf_col_alpha.add(
+        documents=["Biological verification mitosis cell details."],
+        metadatas=[{"source_file": "cell.pdf", "title": "Cell Study", "section": "Biology", "workspace": ws_alpha}],
+        ids=["pdf_verify_chunk_1"]
+    )
+    
+    pdf_ctx_alpha, pdf_chunks_alpha = search_pdf_context(
+        query="mitosis",
+        n_results=2,
+        min_similarity=0.10,
+        workspace=ws_alpha
+    )
+    check("Workspace: Retrieve PDF context in designated workspace", len(pdf_chunks_alpha) > 0)
+    
+    pdf_ctx_beta, pdf_chunks_beta = search_pdf_context(
+        query="mitosis",
+        n_results=2,
+        min_similarity=0.10,
+        workspace=ws_beta
+    )
+    check("Workspace: Retrieve PDF context in alternative workspace (should be isolated)", len(pdf_chunks_beta) == 0)
+    
+    client.delete_collection(get_collection_name_for_workspace(ws_alpha))
+    client.delete_collection(get_collection_name_for_workspace(ws_beta))
+    client.delete_collection(pdf_col_name_alpha)
+    
+except Exception as e:
+    check("Workspace isolation system verification", False, str(e))
 
 # ─────────────────────────────────────────────────────────────────
 # FINAL REPORT

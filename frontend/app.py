@@ -69,6 +69,32 @@ def strip_fake_links(text: str) -> str:
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', replacer, text)
     return text
 
+def format_report_with_style(report_text: str, sources: list, style: str) -> str:
+    """
+    Dynamically swaps or appends the references section of the report text
+    using the CitationManager with the selected citation style.
+    """
+    if not sources or not report_text:
+        return report_text
+    try:
+        from tools.citation_manager import CitationManager
+        cm = CitationManager(sources)
+        new_references_md = cm.generate_references_section(style)
+        
+        # Locate '## 8. References' or '## References' section
+        import re
+        pattern = r"(##\s*\d*\.?\s*References.*)"
+        match = re.search(pattern, report_text, flags=re.IGNORECASE)
+        if match:
+            header = match.group(1)
+            parts = report_text.split(header, 1)
+            return parts[0] + new_references_md
+        else:
+            return report_text + "\n\n" + new_references_md
+    except Exception as e:
+        print(f"Error formatting bibliography style: {e}")
+        return report_text
+
 
 # ==========================================
 # Main UI
@@ -134,7 +160,7 @@ with tab_pdf:
             from tools.pdf_parser_tool import ingest_pdf_to_chroma
             try:
                 with st.spinner(f"Parsing, chunking, and indexing '{uploaded_file.name}'..."):
-                    record = ingest_pdf_to_chroma(temp_path, uploaded_file.name)
+                    record = ingest_pdf_to_chroma(temp_path, uploaded_file.name, workspace=st.session_state.active_workspace)
                 st.success(f"Successfully processed and ingested '{record['title']}'!")
                 time.sleep(1)
                 st.rerun()
@@ -153,6 +179,12 @@ with tab_pdf:
                 ingested_papers = json.load(f)
         except Exception:
             ingested_papers = []
+            
+    # Filter ingested papers by active workspace
+    ingested_papers = [
+        p for p in ingested_papers 
+        if p.get("workspace", "default") == st.session_state.active_workspace
+    ]
             
     if ingested_papers:
         st.markdown(f"<h3 style='color:#ffffff; margin-bottom: 16px;'>Ingested Papers ({len(ingested_papers)})</h3>", unsafe_allow_html=True)
@@ -339,6 +371,9 @@ if initiate_btn:
         st.session_state.academic_papers = []      # Academic sources
         st.session_state.fallback_used = False     # Fallback flag
         st.session_state.retrieved_pdf_chunks = [] # PDF RAG chunks
+        st.session_state.sources = []              # Standardized reference sources
+        st.session_state.bib_path = None           # Path to saved .bib file
+        st.session_state.selected_style = "IEEE"   # Default citation style
 
 if getattr(st.session_state, 'running', False):
     if not st.session_state.full_research:
@@ -355,12 +390,13 @@ if getattr(st.session_state, 'running', False):
         
         # Step 3: Researcher Agent (Generates v1)
         render_workflow_step(3)
-        research_result = generate_research(st.session_state.topic, plan=st.session_state.planner_roadmap)
+        research_result = generate_research(st.session_state.topic, plan=st.session_state.planner_roadmap, workspace=st.session_state.active_workspace)
         initial_report = research_result.get("report", "")
         st.session_state.retrieved_memories = research_result.get("memories", [])
         st.session_state.academic_papers = research_result.get("academic_papers", [])
         st.session_state.fallback_used = research_result.get("fallback_used", False)
         st.session_state.retrieved_pdf_chunks = research_result.get("pdf_chunks", [])
+        st.session_state.sources = research_result.get("sources", [])
         
         if initial_report.startswith("⚠️"):
             # Skip loop if quota hit
@@ -382,17 +418,28 @@ if getattr(st.session_state, 'running', False):
             st.session_state.critique_analysis = loop_result["final_critique"]
             st.session_state.optimized_data = loop_result
 
+        # Generate citations and BibTeX file
+        if st.session_state.sources:
+            try:
+                from tools.citation_manager import CitationManager
+                cm = CitationManager(st.session_state.sources)
+                database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database")
+                bib_dir = os.path.join(database_dir, "bib_files")
+                st.session_state.bib_path = cm.save_bibtex_file(st.session_state.topic, bib_dir)
+            except Exception as e:
+                print(f"Citation Generation Error: {e}")
+
         # Step 6: Complete
         render_workflow_step(6)
         time.sleep(0.5)
 
         # Save to memory in a background thread
-        def save_memory_background(topic, research, summary, critique_dict):
+        def save_memory_background(topic, research, summary, critique_dict, workspace):
             try:
                 from memory.memory_manager import save_research_to_memory
                 # Convert the JSON critique to string for saving
                 critique_str = str(critique_dict) if isinstance(critique_dict, dict) else critique_dict
-                save_research_to_memory(topic, research, summary, critique_str)
+                save_research_to_memory(topic, research, summary, critique_str, workspace=workspace)
             except Exception as e:
                 print(f"Memory System Error: {e}")
 
@@ -402,7 +449,8 @@ if getattr(st.session_state, 'running', False):
                 st.session_state.topic,
                 st.session_state.full_research,
                 st.session_state.executive_summary,
-                st.session_state.critique_analysis
+                st.session_state.critique_analysis,
+                st.session_state.active_workspace
             )
         )
         thread.start()
@@ -969,7 +1017,12 @@ if getattr(st.session_state, 'running', False):
                         )
                         with st.expander("View Draft v2 — Optimized", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            st.markdown(strip_fake_links(st.session_state.full_research))
+                            report_styled = format_report_with_style(
+                                st.session_state.full_research,
+                                getattr(st.session_state, "sources", []),
+                                getattr(st.session_state, "selected_style", "IEEE")
+                            )
+                            st.markdown(strip_fake_links(report_styled))
                             st.markdown('</div>', unsafe_allow_html=True)
                     else:
                         # Lucide icon header for Full Report
@@ -996,8 +1049,105 @@ if getattr(st.session_state, 'running', False):
                         )
                         with st.expander("View Full Report", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            st.markdown(strip_fake_links(st.session_state.full_research))
+                            report_styled = format_report_with_style(
+                                st.session_state.full_research,
+                                getattr(st.session_state, "sources", []),
+                                getattr(st.session_state, "selected_style", "IEEE")
+                            )
+                            st.markdown(strip_fake_links(report_styled))
                             st.markdown('</div>', unsafe_allow_html=True)
+
+                # ── Citations & Bibliography Section ─────────────────────────────
+                if getattr(st.session_state, "sources", []):
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"""
+                        <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
+                                    background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(239,68,68,0.06) 100%);
+                                    border-left: 5px solid #f59e0b; border-radius: 12px;'>
+                            <div style='display:flex; align-items:center; gap:14px;'>
+                                <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z'/><path d='M6 6h10'/><path d='M6 10h10'/><path d='M6 14h10'/><path d='M6 18h10'/></svg>
+                                <div>
+                                    <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
+                                              text-transform:uppercase; color:#f59e0b;'>Section 4</p>
+                                    <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
+                                               background: linear-gradient(90deg, #f59e0b, #ef4444);
+                                               -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
+                                        Citations & Bibliography Library
+                                    </h2>
+                                </div>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    with st.container():
+                        # Style Selector & Downloads Layout
+                        col_select, col_actions = st.columns([1, 1])
+                        with col_select:
+                            selected_style = st.selectbox(
+                                "Select Bibliography Citation Style:",
+                                options=["IEEE", "APA", "MLA"],
+                                index=["IEEE", "APA", "MLA"].index(getattr(st.session_state, "selected_style", "IEEE")),
+                                key="selected_style_selector"
+                            )
+                            st.session_state.selected_style = selected_style
+                            
+                        with col_actions:
+                            from tools.citation_manager import CitationManager
+                            cm = CitationManager(st.session_state.sources)
+                            bib_content = cm.generate_bibtex_file_content()
+                            report_styled = format_report_with_style(
+                                st.session_state.full_research,
+                                st.session_state.sources,
+                                selected_style
+                            )
+                            
+                            st.markdown("<p style='margin:0; font-size:0.85rem; font-weight:700; color:#a1a1aa;'>Export Resources:</p>", unsafe_allow_html=True)
+                            col_btn1, col_btn2 = st.columns([1, 1])
+                            with col_btn1:
+                                st.download_button(
+                                    label="📥 Download .bib",
+                                    data=bib_content,
+                                    file_name=f"{st.session_state.topic.replace(' ', '_')}.bib",
+                                    mime="text/plain",
+                                    key="download_bib_btn_ui",
+                                    use_container_width=True
+                                )
+                            with col_btn2:
+                                st.download_button(
+                                    label="📥 Download Report .md",
+                                    data=report_styled,
+                                    file_name=f"Research_Report_{st.session_state.topic.replace(' ', '_')}.md",
+                                    mime="text/markdown",
+                                    key="download_md_report_btn_ui",
+                                    use_container_width=True
+                                )
+
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # Show individual citation records
+                        st.markdown("<h3 style='color:#ffffff; font-size:1.2rem; margin-bottom:12px;'>Individual Source Records</h3>", unsafe_allow_html=True)
+                        for idx, s in enumerate(cm.sources, start=1):
+                            type_icon = "📄" if s["type"] == "pdf" else ("🌐" if s["type"] == "web" else "📚")
+                            with st.expander(f"{type_icon}  Source {idx}: {s['title'][:70]}{'...' if len(s['title']) > 70 else ''}"):
+                                # Render style options
+                                st.markdown(f"**APA 7th:**")
+                                st.markdown(f"> {cm.get_apa_citation(s)}")
+                                
+                                st.markdown(f"**IEEE:**")
+                                st.markdown(f"> {cm.get_ieee_citation(s)}")
+                                
+                                st.markdown(f"**MLA 9th:**")
+                                st.markdown(f"> {cm.get_mla_citation(s)}")
+                                
+                                st.markdown(f"**BibTeX Entry:**")
+                                st.code(cm.get_bibtex_citation(s), language="latex")
+                                
+                        # Show compiled BibTeX tab
+                        with st.expander("📝 View Full Compiled BibTeX File"):
+                            st.code(bib_content, language="latex")
 
 
 
