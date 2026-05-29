@@ -257,15 +257,23 @@ def search_crossref(query: str, limit: int = 5) -> list:
                 date_parts = issued.get("date-parts", [[]])
                 year = CURRENT_YEAR
                 if date_parts and date_parts[0] and len(date_parts[0]) > 0:
-                    year = date_parts[0][0]
+                    raw_year = date_parts[0][0]
+                    try:
+                        year = int(raw_year)
+                    except (TypeError, ValueError):
+                        year = CURRENT_YEAR
                 
                 container = item.get("container-title", [])
                 venue = container[0] if container else (item.get("publisher") or "")
                 
+                # Clean JATS XML tags from abstract immediately at construction time
+                raw_abstract = item.get("abstract") or ""
+                cleaned_abstract = clean_abstract(raw_abstract)
+                
                 papers.append({
                     "title": title.strip(),
                     "authors": authors,
-                    "abstract": item.get("abstract") or "No abstract available.",
+                    "abstract": cleaned_abstract,
                     "year": year,
                     "citations": item.get("is-referenced-by-count") or 0,
                     "url": item.get("URL") or "#",

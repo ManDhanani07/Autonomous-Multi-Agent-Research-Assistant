@@ -52,13 +52,21 @@ ICON_REPORT = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" vi
 # ==========================================
 def strip_fake_links(text: str) -> str:
     """
-    Removes all markdown hyperlinks [text](url) from the report output.
-    Only keeps the link text so no fake/invented URLs are clickable.
-    Real source URLs in the References section are kept as plain text.
+    Removes hallucinated markdown hyperlinks [text](url) from the report body.
+    Preserves:
+      - Real http/https URLs: [title](https://...) → kept as clickable link
+      - PDF Library references: [PDF Library] ... → kept as-is
+    Only strips links where the URL is not a real http address.
     """
     import re
-    # Replace [link text](url) with just the link text
-    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    # Keep real http/https links intact, strip everything else
+    def replacer(m):
+        link_text = m.group(1)
+        url = m.group(2)
+        if url.startswith("http://") or url.startswith("https://"):
+            return m.group(0)  # keep real links
+        return link_text      # strip fake/invented links
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', replacer, text)
     return text
 
 

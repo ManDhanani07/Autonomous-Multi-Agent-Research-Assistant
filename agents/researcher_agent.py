@@ -83,7 +83,11 @@ def create_research_prompt(topic: str,
         for i, src in enumerate(source_urls, start=1):
             title = src.get("title", f"Source {i}")
             url   = src.get("url", "#")
-            references_block += f"{i}. [{title}]({url})\n"
+            if url.startswith("http"):
+                references_block += f"{i}. [{title}]({url})\n"
+            else:
+                # PDF Library entry — render as plain text with icon
+                references_block += f"{i}. 📄 {title} — _{url}_\n"
 
     # ── Inject Planner Guidance ───────────────────────────────────────────
     if plan and isinstance(plan, dict):
