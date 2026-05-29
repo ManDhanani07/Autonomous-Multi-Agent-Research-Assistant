@@ -1,0 +1,51 @@
+[
+    {
+        "filename": "test_paper.pdf",
+        "title": "This is a sample research abstract discussing the application of Neural Networks to General Organic",
+        "chunk_count": 4,
+        "sections": [
+            "Abstract",
+            "Introduction",
+            "Methodology",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 0,
+        "reference_count": 2,
+        "summary": "This paper explores the application of Neural Networks to General Organic Chemistry (GOC), with a focus on classifying molecules and predicting reaction pathways. The core objective is to investigate machine learning approaches, specifically deep learning models, for GOC. The methodology involves utilizing graph neural networks to learn structural rules in organic chemistry. The key contribution of this research is the potential to leverage deep learning models to improve the classification and prediction of molecular properties and reaction pathways, thereby enhancing the field of organic chemistry. By applying machine learning approaches to GOC, this study aims to demonstrate the effectiveness of neural networks in learning complex chemical structures and reactions, and to provide a foundation for future research in this area. The outcome of this research could lead to significant advancements in the field of organic chemistry, enabling more accurate predictions and classifications of molecular properties and reactions.",
+        "timestamp": "2026-05-29T14:15:53.403711"
+    },
+    {
+        "filename": "Internet_of_Things_IoT_for_Next-Generation_Smart_Systems_A_Review_of_Current_Challenges_Future_Trends_and_Prospects_for_Emerging_5G-IoT_Scenarios.pdf",
+        "title": "SPECIAL SECTION ON ANTENNA AND PROPAGATION FOR 5G AND BEYOND",
+        "chunk_count": 73,
+        "sections": [
+            "Header/Title",
+            "Introduction",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 4,
+        "reference_count": 117,
+        "summary": "This paper reviews the current challenges, future trends, and prospects of the Internet of Things (IoT) for next-generation smart systems. The core objective is to envision the future of IoT, which is expected to connect around 28 billion smart devices worldwide by 2021. The methodology involves analyzing recent developments in wireless sensor networks, telecommunications, and informatics. The paper highlights the pivotal role of IoT in enhancing living standards and professional applications, such as e-health, smart homes, automation, and remote monitoring. Key contributions include discussing the integration of various technologies, including sensors, embedded systems, and cyber-physical systems, to achieve an all-communicating world with increased data volume, device connectivity, and reduced latency. The paper aims to provide insights into the future of IoT and its potential to transform various aspects of life and industry.",
+        "timestamp": "2026-05-29T14:39:24.332177"
+    },
+    {
+        "filename": "verify_test_paper.pdf",
+        "title": "Graph Neural Networks for Molecular Property Prediction",
+        "chunk_count": 6,
+        "sections": [
+            "Header/Title",
+            "Abstract",
+            "Introduction",
+            "Methodology",
+            "Results",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 0,
+        "reference_count": 3,
+        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve accuracy and efficiency in drug discovery. By leveraging GCN, the approach can effectively capture complex molecular structures and relationships, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a valuable tool for the pharmaceutical industry and contributing to the advancement of drug discovery research.",
+        "timestamp": "2026-05-29T15:26:37.715968"
+    }
+]
