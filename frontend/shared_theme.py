@@ -331,8 +331,8 @@ button[class*="sidebar-collapse"] {
 
 /* Workflow Cards Custom CSS (Homepage) */
 .workflow-container {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 16px;
     margin-top: 20px;
     margin-bottom: 30px;
@@ -407,6 +407,21 @@ button[class*="sidebar-collapse"] {
 }
 .workflow-card.completed .status {
     color: #10b981;
+}
+.workflow-card.failed {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.02);
+}
+.workflow-card.failed .icon-box {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.workflow-card.failed .title {
+    color: #e4e4e7;
+}
+.workflow-card.failed .status {
+    color: #ef4444;
 }
 @keyframes pulse-icon {
     0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }

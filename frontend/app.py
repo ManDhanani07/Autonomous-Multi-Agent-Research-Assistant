@@ -377,48 +377,165 @@ if initiate_btn:
 
 if getattr(st.session_state, 'running', False):
     if not st.session_state.full_research:
-        # Step 1: Initialize
-        render_workflow_step(1)
-        from agents.planner_agent import generate_plan
-        from agents.researcher_agent import generate_research
-        from orchestrators.self_correction_loop import run_optimization_loop
-        time.sleep(1)
+        from orchestrators.agent_orchestrator import AgentOrchestrator
+        import asyncio
 
-        # Step 2: Planner Agent
-        render_workflow_step(2)
-        st.session_state.planner_roadmap = generate_plan(st.session_state.topic)
+        # Create placeholders for dynamic visual updates
+        workflow_ui = st.empty()
+        telemetry_ui = st.empty()
+
+        # Dynamic Status Update Callback
+        def render_telemetry_ui(orchestrator: AgentOrchestrator):
+            # Define icons matching our global system definitions
+            task_icons = {
+                "planner": ICON_PLANNER,
+                "researcher_0": ICON_RESEARCHER,
+                "researcher_1": ICON_RESEARCHER,
+                "researcher_2": ICON_RESEARCHER,
+                "fact_validation": ICON_VERIFIED,
+                "rag_enhancement": ICON_RAG,
+                "summarizer": ICON_SUMMARIZER,
+                "critic": ICON_CRITIC,
+                "self_correction": ICON_CORRECTION,
+                "report_generator": ICON_REPORT,
+                "memory_storage": ICON_CHECK
+            }
+
+            # Build workflow flowchart HTML
+            html = "<div class='workflow-container'>"
+            for t_id, task in orchestrator.tasks.items():
+                status = task.status.lower()
+                dur_str = f"{task.duration}s" if task.duration > 0 else ""
+                retry_str = f" · Retry: {task.retry_count}" if task.retry_count > 0 else ""
+                
+                # Assign visual classes
+                active_class = "active" if status == "running" else (
+                    "completed" if status in ["completed", "skipped"] else (
+                        "failed" if status == "failed" else "pending"
+                    )
+                )
+                
+                # Build display status
+                if status == "running":
+                    status_text = "Running..."
+                elif status == "completed":
+                    status_text = f"Completed ({dur_str}{retry_str})"
+                elif status == "skipped":
+                    status_text = "Skipped"
+                elif status == "failed":
+                    status_text = f"Failed: {task.error[:60] if task.error else ''}"
+                else:
+                    status_text = "Awaiting execution"
+
+                icon = task_icons.get(t_id, ICON_AI_ENGINE)
+                html += f"""
+<div class="workflow-card {active_class}">
+<div class="icon-box">{icon}</div>
+<div class="content">
+<div class="title">{task.name}</div>
+<div class="status">{status_text}</div>
+</div>
+</div>
+"""
+            html += "</div>"
+            workflow_ui.markdown(html, unsafe_allow_html=True)
+
+            # Build scrolling system telemetry logs
+            logs_html = """
+<div style="background: rgba(24, 24, 27, 0.85); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 24px; margin-top: 20px;">
+    <h4 style="color:#ffffff; margin: 0 0 16px 0; font-weight:600; display:flex; align-items:center; gap:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M12 18h.01"/><path d="M8 6h8"/><path d="M8 10h8"/><path d="M8 14h8"/></svg>
+        Neural Pipeline Telemetry Logs
+    </h4>
+    <div style="font-family: 'Outfit', monospace; font-size: 0.9rem; color: #a1a1aa; height: 180px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 6px;">
+"""
+            for log in reversed(orchestrator.logs):
+                # Highlight different status keywords
+                colored_log = log
+                if "Failed" in log or "Error" in log:
+                    colored_log = f"<span style='color: #ef4444;'>{log}</span>"
+                elif "Completed" in log or "Successfully" in log:
+                    colored_log = f"<span style='color: #10b981;'>{log}</span>"
+                elif "Active" in log or "Initiating" in log:
+                    colored_log = f"<span style='color: #818cf8;'>{log}</span>"
+                logs_html += f"<div>{colored_log}</div>"
+            logs_html += "</div></div>"
+            telemetry_ui.markdown(logs_html, unsafe_allow_html=True)
+
+        # Instantiate & run orchestrator
+        orchestrator = AgentOrchestrator(
+            topic=st.session_state.topic,
+            workspace=st.session_state.active_workspace,
+            status_callback=render_telemetry_ui
+        )
         
-        # Step 3: Researcher Agent (Generates v1)
-        render_workflow_step(3)
-        research_result = generate_research(st.session_state.topic, plan=st.session_state.planner_roadmap, workspace=st.session_state.active_workspace)
-        initial_report = research_result.get("report", "")
-        st.session_state.retrieved_memories = research_result.get("memories", [])
-        st.session_state.academic_papers = research_result.get("academic_papers", [])
-        st.session_state.fallback_used = research_result.get("fallback_used", False)
-        st.session_state.retrieved_pdf_chunks = research_result.get("pdf_chunks", [])
-        st.session_state.sources = research_result.get("sources", [])
+        # Render initial PENDING state
+        render_telemetry_ui(orchestrator)
         
-        if initial_report.startswith("⚠️"):
-            # Skip loop if quota hit
-            st.session_state.full_research = initial_report
-            st.session_state.executive_summary = initial_report
-            st.session_state.critique_analysis = {"error": initial_report}
+        try:
+            # Execute async pipeline DAG
+            asyncio.run(orchestrator.run())
+        except Exception as e:
+            st.error(f"Orchestrator critical execution failure: {e}")
+            st.session_state.running = False
+            st.rerun()
+
+        # Check for pipeline failure
+        if orchestrator.pipeline_status == "FAILED":
+            st.session_state.running = False
+            st.session_state.full_research = "⚠️ Research pipeline execution failed."
+            st.session_state.executive_summary = "⚠️ Research pipeline execution failed."
+            st.session_state.critique_analysis = {"error": "Pipeline aborted."}
             st.session_state.optimized_data = None
-        else:
-            # Step 4 & 5: Critic Evaluation & Self-Correction (Handled by loop controller)
-            render_workflow_step(4)
-            loop_result = run_optimization_loop(st.session_state.topic, initial_report)
-            
-            # Update to Step 5 dynamically
-            render_workflow_step(5)
-            
-            # Unpack results
-            st.session_state.full_research = loop_result["final_report"]
-            st.session_state.executive_summary = loop_result["final_summary"]
-            st.session_state.critique_analysis = loop_result["final_critique"]
-            st.session_state.optimized_data = loop_result
+            st.session_state.memory_saved = False
+            st.session_state.memory_error = "Orchestrator pipeline failed."
+            st.rerun()
 
-        # Generate citations and BibTeX file
+        # Unpack results into session state
+        planner_task = orchestrator.tasks["planner"]
+        researcher_0 = orchestrator.tasks["researcher_0"]
+        researcher_1 = orchestrator.tasks["researcher_1"]
+        researcher_2 = orchestrator.tasks["researcher_2"]
+        fact_val_task = orchestrator.tasks["fact_validation"]
+        rag_task = orchestrator.tasks["rag_enhancement"]
+        summarizer_task = orchestrator.tasks["summarizer"]
+        critic_task = orchestrator.tasks["critic"]
+        self_corr_task = orchestrator.tasks["self_correction"]
+        report_task = orchestrator.tasks["report_generator"]
+        memory_task = orchestrator.tasks["memory_storage"]
+
+        st.session_state.planner_roadmap = planner_task.result
+        st.session_state.full_research = report_task.result
+        st.session_state.executive_summary = summarizer_task.result
+        st.session_state.critique_analysis = critic_task.result
+        st.session_state.optimized_data = self_corr_task.result
+        
+        # Combine memories and chunks
+        st.session_state.retrieved_memories = rag_task.result.get("memories", [])
+        
+        # Combine lists from parallel researchers
+        academic_papers = []
+        pdf_chunks = []
+        sources = []
+        fallback_used = False
+        
+        for i in range(3):
+            res_task = orchestrator.tasks[f"researcher_{i}"]
+            if res_task.result:
+                academic_papers.extend(res_task.result.get("academic_papers", []))
+                pdf_chunks.extend(res_task.result.get("pdf_chunks", []))
+                sources.extend(res_task.result.get("sources", []))
+                if res_task.result.get("fallback_used", False):
+                    fallback_used = True
+                    
+        st.session_state.academic_papers = academic_papers
+        st.session_state.retrieved_pdf_chunks = pdf_chunks
+        st.session_state.sources = sources
+        st.session_state.fallback_used = fallback_used
+        st.session_state.memory_saved = memory_task.result
+        st.session_state.memory_error = None if memory_task.result else "Memory storage failed to archive."
+
+        # Generate citations BibTeX file
         if st.session_state.sources:
             try:
                 from tools.citation_manager import CitationManager
@@ -429,31 +546,9 @@ if getattr(st.session_state, 'running', False):
             except Exception as e:
                 print(f"Citation Generation Error: {e}")
 
-        # Step 6: Complete
-        render_workflow_step(6)
-        time.sleep(0.5)
-
-        # Save to memory synchronously to prevent SQLite lock contention on Windows and ensure visibility
-        try:
-            from memory.memory_manager import save_research_to_memory
-            # Convert the JSON critique to string for saving
-            critique_dict = st.session_state.critique_analysis
-            critique_str = str(critique_dict) if isinstance(critique_dict, dict) else critique_dict
-            save_research_to_memory(
-                st.session_state.topic,
-                st.session_state.full_research,
-                st.session_state.executive_summary,
-                critique_str,
-                workspace=st.session_state.active_workspace
-            )
-            st.session_state.memory_saved = True
-            st.session_state.memory_error = None
-        except Exception as e:
-            st.session_state.memory_saved = False
-            st.session_state.memory_error = str(e)
-            print(f"Memory System Error: {e}")
-
+        # Clear UI placeholders and rerun to draw final output
         workflow_ui.empty()
+        telemetry_ui.empty()
         st.rerun()
 
     # ── Render Output from Session State ─────────────────────────────────
