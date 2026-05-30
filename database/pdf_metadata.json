@@ -49,6 +49,19 @@
         "workspace": "physics_project"
     },
     {
+        "filename": "opticsbook.pdf",
+        "title": "Physics of Light and Optics",
+        "chunk_count": 835,
+        "sections": [
+            "Header/Title"
+        ],
+        "table_count": 21,
+        "reference_count": 0,
+        "summary": "No Abstract or Introduction content available to summarize.",
+        "timestamp": "2026-05-30T12:00:11.847477",
+        "workspace": "physics_project"
+    },
+    {
         "filename": "verify_test_paper.pdf",
         "title": "Graph Neural Networks for Molecular Property Prediction",
         "chunk_count": 6,
@@ -63,8 +76,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, thereby reducing costs. The methodology involves utilizing GCN to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging the capabilities of GCN, this approach aims to provide a more effective and reliable method for predicting molecular properties, ultimately accelerating the development of new drugs. The use of GCN enables the model to learn complex molecular structures and relationships, leading to more accurate predictions and better decision-making in the drug discovery process.",
-        "timestamp": "2026-05-29T18:24:19.449074",
+        "summary": "This paper aims to predict molecular properties, specifically toxicity, using a deep learning approach. The core objective is to accelerate drug discovery by reducing costs and development time. The methodology employs Graph Convolutional Networks (GCN), a type of Graph Neural Network, to predict molecular properties. The key contribution is the application of GCN to molecular property prediction, which has the potential to improve accuracy and efficiency. By leveraging GCN, the approach can effectively capture complex molecular structures and relationships, enabling better predictions. The paper presents a promising solution for early-stage drug discovery, where traditional methods are often time-consuming and costly. The use of GCN for molecular property prediction is a novel approach that could significantly impact the field of drug discovery and development.",
+        "timestamp": "2026-05-30T12:09:21.111056",
         "workspace": "default"
     }
 ]

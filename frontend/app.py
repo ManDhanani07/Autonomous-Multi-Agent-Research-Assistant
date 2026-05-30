@@ -433,27 +433,25 @@ if getattr(st.session_state, 'running', False):
         render_workflow_step(6)
         time.sleep(0.5)
 
-        # Save to memory in a background thread
-        def save_memory_background(topic, research, summary, critique_dict, workspace):
-            try:
-                from memory.memory_manager import save_research_to_memory
-                # Convert the JSON critique to string for saving
-                critique_str = str(critique_dict) if isinstance(critique_dict, dict) else critique_dict
-                save_research_to_memory(topic, research, summary, critique_str, workspace=workspace)
-            except Exception as e:
-                print(f"Memory System Error: {e}")
-
-        thread = threading.Thread(
-            target=save_memory_background,
-            args=(
+        # Save to memory synchronously to prevent SQLite lock contention on Windows and ensure visibility
+        try:
+            from memory.memory_manager import save_research_to_memory
+            # Convert the JSON critique to string for saving
+            critique_dict = st.session_state.critique_analysis
+            critique_str = str(critique_dict) if isinstance(critique_dict, dict) else critique_dict
+            save_research_to_memory(
                 st.session_state.topic,
                 st.session_state.full_research,
                 st.session_state.executive_summary,
-                st.session_state.critique_analysis,
-                st.session_state.active_workspace
+                critique_str,
+                workspace=st.session_state.active_workspace
             )
-        )
-        thread.start()
+            st.session_state.memory_saved = True
+            st.session_state.memory_error = None
+        except Exception as e:
+            st.session_state.memory_saved = False
+            st.session_state.memory_error = str(e)
+            print(f"Memory System Error: {e}")
 
         workflow_ui.empty()
         st.rerun()
@@ -495,16 +493,28 @@ if getattr(st.session_state, 'running', False):
                 )
                 st.markdown(clean_summary)
             else:
-                st.markdown(
-                    "<div style='display:flex;align-items:center;gap:12px;"
-                    "padding:16px 20px;margin-bottom:14px;"
-                    "background:rgba(16,185,129,0.08);color:#34d399;"
-                    "border-radius:10px;border:1px solid rgba(16,185,129,0.25);font-weight:600;'>"
-                    "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>"
-                    "<span>Memory Saved Successfully</span>"
-                    "</div>",
-                    unsafe_allow_html=True
-                )
+                if getattr(st.session_state, "memory_saved", False):
+                    st.markdown(
+                        "<div style='display:flex;align-items:center;gap:12px;"
+                        "padding:16px 20px;margin-bottom:14px;"
+                        "background:rgba(16,185,129,0.08);color:#34d399;"
+                        "border-radius:10px;border:1px solid rgba(16,185,129,0.25);font-weight:600;'>"
+                        "<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>"
+                        "<span>Memory Saved Successfully</span>"
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+                elif getattr(st.session_state, "memory_error", None) is not None:
+                    st.markdown(
+                        f"<div style='display:flex;align-items:center;gap:12px;"
+                        f"padding:16px 20px;margin-bottom:14px;"
+                        f"background:rgba(239,68,68,0.08);color:#fca5a5;"
+                        f"border-radius:10px;border:1px solid rgba(239,68,68,0.25);font-weight:600;'>"
+                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#fca5a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14a2 2 0 0 0 1.73 3h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>"
+                        f"<span>Memory Save Failed: {st.session_state.memory_error}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
                 st.markdown(
                     "<div style='display:flex;align-items:center;gap:12px;"
                     "padding:16px 20px;margin-bottom:24px;"
