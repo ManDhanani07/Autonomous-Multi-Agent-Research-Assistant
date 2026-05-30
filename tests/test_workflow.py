@@ -50,6 +50,24 @@ MOCK_CRITIQUE = {
 # Mock report generator result
 MOCK_REPORT = "# Consolidated Research Report\n\n## Executive Summary\nDistilled summary.\n\n## Body\nValidated research report body."
 
+# Mock fact validator result
+MOCK_VALIDATION_RESULT = {
+    "validated_text": MOCK_VALIDATION,
+    "trust_score": 100.0,
+    "hallucination_score": 0.0,
+    "confidence_label": "High Trust",
+    "claims_validation": [
+        {
+            "claim": "Quantum algorithms run on qubits.",
+            "status": "Verified",
+            "source": "Quantum benchmarks",
+            "confidence_score": 1.0,
+            "explanation": "Verified in abstract."
+        }
+    ],
+    "warnings": []
+}
+
 async def test_orchestrator_successful_dag_execution():
     """
     Tests that the AgentOrchestrator successfully executes all 9 stages
@@ -58,12 +76,13 @@ async def test_orchestrator_successful_dag_execution():
     with patch("orchestrators.agent_orchestrator.generate_plan", return_value=MOCK_PLAN), \
          patch("orchestrators.agent_orchestrator.generate_research", return_value=MOCK_RESEARCH), \
          patch("orchestrators.agent_orchestrator.validate_research_facts", return_value=MOCK_VALIDATION), \
+         patch("agents.fact_validator_agent.validate_report_with_sources", return_value=MOCK_VALIDATION_RESULT), \
          patch("orchestrators.agent_orchestrator.summarize_research", return_value=MOCK_SUMMARY), \
          patch("orchestrators.agent_orchestrator.critique_research", return_value=MOCK_CRITIQUE), \
          patch("orchestrators.agent_orchestrator.generate_final_report", return_value=MOCK_REPORT), \
          patch("orchestrators.agent_orchestrator.save_research_to_memory", return_value=True), \
          patch("orchestrators.agent_orchestrator.search_memory_context", return_value=("", [])):
-         
+          
         # Initialize orchestrator
         orchestrator = AgentOrchestrator(topic="Molecular dynamics", workspace="test_workspace")
         
@@ -98,13 +117,14 @@ async def test_orchestrator_self_correction_trigger():
     with patch("orchestrators.agent_orchestrator.generate_plan", return_value=MOCK_PLAN), \
          patch("orchestrators.agent_orchestrator.generate_research", return_value=MOCK_RESEARCH), \
          patch("orchestrators.agent_orchestrator.validate_research_facts", return_value=MOCK_VALIDATION), \
+         patch("agents.fact_validator_agent.validate_report_with_sources", return_value=MOCK_VALIDATION_RESULT), \
          patch("orchestrators.agent_orchestrator.summarize_research", return_value=MOCK_SUMMARY), \
          patch("orchestrators.agent_orchestrator.critique_research", side_effect=[low_critique, MOCK_CRITIQUE]), \
          patch("orchestrators.agent_orchestrator.refine_research", return_value="Refined validated report body."), \
          patch("orchestrators.agent_orchestrator.generate_final_report", return_value=MOCK_REPORT), \
          patch("orchestrators.agent_orchestrator.save_research_to_memory", return_value=True), \
          patch("orchestrators.agent_orchestrator.search_memory_context", return_value=("", [])):
-         
+          
         # Initialize orchestrator
         orchestrator = AgentOrchestrator(topic="Molecular dynamics", workspace="test_workspace")
         

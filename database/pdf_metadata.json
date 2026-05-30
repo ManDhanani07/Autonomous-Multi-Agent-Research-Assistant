@@ -62,6 +62,23 @@
         "workspace": "physics_project"
     },
     {
+        "filename": "AlphaFold 3.pdf",
+        "title": "From Prediction to Simulation: AlphaFold 3 as a Differentiable Framework for Structural Biology",
+        "chunk_count": 69,
+        "sections": [
+            "Header/Title",
+            "Abstract",
+            "Introduction",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 0,
+        "reference_count": 106,
+        "summary": "This paper presents AlphaFold 3, a groundbreaking advancement in computational biology that enhances protein structure prediction and simulation. The core objective is to integrate deep learning with physics-based molecular dynamics, enabling a shift from traditional static structural modeling to dynamic molecular simulations. AlphaFold 3's novel architecture combines multi-scale transformer architectures, biologically-informed cross-attention mechanisms, and geometry-aware optimization strategies, dramatically improving predictive accuracy and generalization across diverse protein families. The key contribution is the reframing of protein folding predictions as a differentiable process, allowing for the integration of machine learning and biophysical principles. This approach has far-reaching implications for precision medicine, rational drug discovery, and intelligent biological design, enabling the modeling of protein dynamics, conformational ensembles, interaction networks, and allostery. AlphaFold 3's differentiable design promises to accelerate the development of personalized therapeutics and bridge the gap between computational biology and experimental research.",
+        "timestamp": "2026-05-30T14:07:51.106539",
+        "workspace": "default"
+    },
+    {
         "filename": "verify_test_paper.pdf",
         "title": "Graph Neural Networks for Molecular Property Prediction",
         "chunk_count": 6,
@@ -76,8 +93,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations from graph-structured data, enabling the prediction of molecular properties. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging the capabilities of GCN, this approach aims to provide a more effective and reliable method for predicting molecular toxicity, ultimately contributing to the development of safer and more effective drugs.",
-        "timestamp": "2026-05-30T12:49:04.190958",
+        "summary": "This paper presents a deep learning approach to predict molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations from graph-structured data. The key contribution of this work is the application of GCN to predict molecular toxicity with high accuracy. By leveraging the capabilities of GCN, this approach aims to improve upon traditional methods and provide a more efficient and effective way to predict molecular properties, ultimately accelerating the drug discovery process. The paper highlights the potential of graph neural networks in molecular property prediction, offering a promising solution for the pharmaceutical industry.",
+        "timestamp": "2026-05-30T14:21:41.598683",
         "workspace": "default"
     }
 ]

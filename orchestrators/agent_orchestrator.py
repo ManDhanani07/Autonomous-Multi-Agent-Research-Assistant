@@ -179,7 +179,7 @@ class AgentOrchestrator:
             "fallback_used": research_result.get("fallback_used", False)
         }
 
-    async def _run_fact_validation(self, task: Task) -> str:
+    async def _run_fact_validation(self, task: Task) -> dict:
         self._log("Fact Validation Agent: Evaluating subtopic report drafts...")
         
         # Compile all subtopic reports
@@ -201,8 +201,35 @@ class AgentOrchestrator:
         if validated_text.startswith("⚠️"):
             raise ValueError(f"Fact Validation Agent failed: {validated_text[:100]}")
             
-        self._log("Fact Validation Agent: Finished reviewing facts and contradictions.")
-        return validated_text
+        # Run granular claims verification against all collected references
+        self._log("Fact Validation Agent: Extracting claims and checking against sources...")
+        from agents.fact_validator_agent import validate_report_with_sources
+        
+        sources = []
+        pdf_chunks = []
+        for i in range(3):
+            res_task = self.tasks[f"researcher_{i}"]
+            if res_task.result:
+                sources.extend(res_task.result.get("sources", []))
+                pdf_chunks.extend(res_task.result.get("pdf_chunks", []))
+                
+        validation_res = await loop.run_in_executor(
+            None,
+            validate_report_with_sources,
+            validated_text,
+            sources,
+            pdf_chunks
+        )
+        
+        self._log(f"Fact Validation Agent: Completed verification. Trust Score: {validation_res['trust_score']}%")
+        return {
+            "validated_text": validation_res["validated_text"],
+            "trust_score": validation_res["trust_score"],
+            "hallucination_score": validation_res["hallucination_score"],
+            "confidence_label": validation_res["confidence_label"],
+            "claims_validation": validation_res["claims_validation"],
+            "warnings": validation_res["warnings"]
+        }
 
     async def _run_rag_enhancement(self, task: Task) -> dict:
         self._log("RAG Enhancement: Retrieving past database context...")
@@ -226,7 +253,7 @@ class AgentOrchestrator:
 
     async def _run_summarizer(self, task: Task) -> str:
         self._log("Summarizer Agent: Creating executive summary findings...")
-        validated_text = self.tasks["fact_validation"].result
+        validated_text = self.tasks["fact_validation"].result["validated_text"]
         
         loop = asyncio.get_running_loop()
         summary = await loop.run_in_executor(
@@ -243,26 +270,45 @@ class AgentOrchestrator:
 
     async def _run_critic(self, task: Task) -> dict:
         self._log("Critic Agent: Rating and reviewing consolidated research quality...")
-        validated_text = self.tasks["fact_validation"].result
+        validation_res = self.tasks["fact_validation"].result
+        validated_text = validation_res["validated_text"]
         summary = self.tasks["summarizer"].result
+        
+        # Inject fact-check trust score and warning metadata so the Critic can penalize if needed
+        trust_score = validation_res.get("trust_score", 100.0)
+        warnings = validation_res.get("warnings", [])
+        
+        validation_meta = f"\n\n### FACT CHECK METADATA (DO NOT REMOVE)\n- Fact Trust Score: {trust_score}%\n- Hallucination Score: {100.0 - trust_score}%\n"
+        if warnings:
+            validation_meta += "- Unsupported Claims Detected:\n" + "\n".join([f"  * {w}" for w in warnings]) + "\n"
+            
+        research_text_for_critic = validated_text + validation_meta
         
         loop = asyncio.get_running_loop()
         critique = await loop.run_in_executor(
             None,
             critique_research,
-            validated_text,
+            research_text_for_critic,
             summary
         )
         
         if "error" in critique:
             raise ValueError(f"Critic failed: {critique.get('error')}")
             
+        # Apply hallucination penalty based on Trust Score to force correction loop
         score = critique.get("score", 0.0)
+        if trust_score < 85.0:
+            penalty = round((85.0 - trust_score) / 10.0, 1)
+            score = max(1.0, round(score - penalty, 1))
+            critique["score"] = score
+            critique["weaknesses"] = critique.get("weaknesses", []) + [f"Low Fact Trust Score ({trust_score}%). Unsupported claims detected."]
+            self._log(f"Critic Agent: Applied hallucination penalty of -{penalty}. Adjusted score: {score}/10.")
+            
         self._log(f"Critic Agent: Evaluation complete. Score: {score}/10.")
         return critique
 
     async def _run_self_correction(self, task: Task) -> dict:
-        validated_text = self.tasks["fact_validation"].result
+        validated_text = self.tasks["fact_validation"].result["validated_text"]
         critique = self.tasks["critic"].result
         score = float(critique.get("score", 0.0))
         
@@ -345,16 +391,20 @@ class AgentOrchestrator:
         summary = corr_result["refined_summary"]
         crit_dict = corr_result["refined_critique"]
         
-        # Combine all sources gathered from subtopics
+        # Combine all sources gathered from subtopics, deduplicated and limited to top 10
         sources = []
-        seen_urls = set()
+        seen_source_keys = set()
         for i in range(3):
             res_task = self.tasks[f"researcher_{i}"]
-            for src in res_task.result.get("sources", []):
-                url = src.get("url", "")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    sources.append(src)
+            if res_task.result:
+                for src in res_task.result.get("sources", []):
+                    url = src.get("url", "")
+                    title = src.get("title", "")
+                    key = url if url else title
+                    if key and key not in seen_source_keys:
+                        seen_source_keys.add(key)
+                        sources.append(src)
+        sources = sources[:10]
                     
         critique_str = f"Score: {crit_dict.get('score', 'N/A')}/10\nStrengths: {crit_dict.get('strengths')}\nSuggestions: {crit_dict.get('improvement_suggestions')}"
         

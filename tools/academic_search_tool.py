@@ -61,7 +61,7 @@ def clean_abstract(abstract: str) -> str:
     return cleaned
 
 
-def search_arxiv(query: str, limit: int = 5) -> list:
+def search_arxiv(query: str, limit: int = 10) -> list:
     """
     Searches arXiv API using direct XML HTTP requests.
     Fails fast on HTTP 429 or network errors to prevent hanging.
@@ -150,7 +150,7 @@ def search_arxiv(query: str, limit: int = 5) -> list:
         logger.warning(f"arXiv query failed: {e}")
         return []
 
-def search_semantic_scholar(query: str, limit: int = 5) -> list:
+def search_semantic_scholar(query: str, limit: int = 10) -> list:
     """
     Queries Semantic Scholar Graph API for metadata and citation counts.
     Fails fast on HTTP 429 or network errors to prevent hanging.
@@ -223,7 +223,7 @@ def search_semantic_scholar(query: str, limit: int = 5) -> list:
         logger.warning(f"Semantic Scholar query failed: {e}")
         return []
 
-def search_crossref(query: str, limit: int = 5) -> list:
+def search_crossref(query: str, limit: int = 10) -> list:
     """
     Queries Crossref Rest API via requests to find peer-reviewed papers.
     Fails fast on HTTP 429 or network errors to prevent hanging.
@@ -295,18 +295,76 @@ def search_crossref(query: str, limit: int = 5) -> list:
         logger.warning(f"Crossref query failed: {e}")
         return []
 
-def rank_and_deduplicate_papers(papers: list, target_limit: int = 5) -> list:
+def rank_and_deduplicate_papers(papers: list, target_limit: int = 10, query: str = "") -> list:
     """
-    Ranks papers based on citation counts, recency, and peer-reviewed status.
+    Ranks papers based on citation counts, recency, peer-reviewed status, and keyword relevance.
     Deduplicates records based on title similarity.
     Ensures source diversification by using a round-robin selection across
     different databases (arXiv, Semantic Scholar, Crossref).
     """
+    # Parse query keywords
+    query_words = []
+    if query:
+        stopwords = {"in", "on", "the", "a", "of", "and", "for", "to", "with", "by", "an", "at", "from", "using", "through", "about", "study"}
+        raw_words = re.findall(r'[a-z0-9]+', query.lower())
+        query_words = [w for w in raw_words if len(w) >= 2 and w not in stopwords]
+
+    filtered_papers = []
+
     # 1. Calculate ranking score for all retrieved papers first
     for paper in papers:
         # Clean abstract first to remove XML/HTML tags
         paper["abstract"] = clean_abstract(paper.get("abstract", ""))
         
+        title = paper.get("title", "")
+        abstract = paper.get("abstract", "")
+        
+        # Calculate keyword relevance match
+        relevance_score = 0.0
+        matched_count = 0
+        
+        if query_words:
+            title_lower = title.lower()
+            abstract_lower = abstract.lower()
+            
+            for qw in query_words:
+                matched_in_title = False
+                matched_in_abstract = False
+                
+                if qw in title_lower:
+                    matched_in_title = True
+                else:
+                    t_words = re.findall(r'[a-z0-9]+', title_lower)
+                    for tw in t_words:
+                        if len(tw) >= 3 and (tw.startswith(qw) or qw.startswith(tw)):
+                            matched_in_title = True
+                            break
+                            
+                if qw in abstract_lower:
+                    matched_in_abstract = True
+                else:
+                    a_words = re.findall(r'[a-z0-9]+', abstract_lower)
+                    for aw in a_words:
+                        if len(aw) >= 3 and (aw.startswith(qw) or qw.startswith(aw)):
+                            matched_in_abstract = True
+                            break
+                            
+                if matched_in_title:
+                    matched_count += 1
+                    relevance_score += 12.0  # High weight for title match
+                elif matched_in_abstract:
+                    matched_count += 1
+                    relevance_score += 5.0   # Medium weight for abstract match
+
+            # Strict relevance filter: if query has keywords and we match 0 of them,
+            # we discard this paper completely as unrelated to enforce 100% matched rule.
+            if query_words and matched_count == 0:
+                continue
+                
+            # Extra boost for higher keyword match ratio
+            match_ratio = matched_count / len(query_words)
+            relevance_score += match_ratio * 20.0
+            
         citations = paper.get("citations", 0)
         citation_score = math.log1p(citations) * 1.5
         
@@ -321,20 +379,27 @@ def rank_and_deduplicate_papers(papers: list, target_limit: int = 5) -> list:
         peer_reviewed_bonus = 2.0 if (venue and venue.lower() != "arxiv") else 0.0
         
         # Abstract bonus: reward papers that actually provide an abstract (critical for RAG)
-        abstract = paper.get("abstract", "")
         abstract_bonus = 3.0 if (abstract and abstract != "No abstract available.") else 0.0
         
         # Source priority bonus: prioritize Semantic Scholar (best URLs/accuracy) and arXiv over Crossref
         src = paper.get("source", "")
         source_bonus = 2.0 if src == "Semantic Scholar" else (1.0 if src == "arXiv" else 0.0)
         
-        paper["ranking_score"] = citation_score + recency_score + peer_reviewed_bonus + abstract_bonus + source_bonus
+        paper["ranking_score"] = (
+            citation_score 
+            + recency_score 
+            + peer_reviewed_bonus 
+            + abstract_bonus 
+            + source_bonus 
+            + relevance_score
+        )
+        filtered_papers.append(paper)
 
     # 2. Sort all papers by ranking score descending so we keep the highest-scoring version during deduplication
-    papers.sort(key=lambda x: x.get("ranking_score", 0), reverse=True)
+    filtered_papers.sort(key=lambda x: x.get("ranking_score", 0), reverse=True)
     
     seen_titles = {}
-    for paper in papers:
+    for paper in filtered_papers:
         normalized_title = clean_title(paper["title"])
         if normalized_title:
             if normalized_title not in seen_titles:
@@ -431,7 +496,7 @@ Output ONLY the optimized search keywords (max 4-5 words). Do not wrap in quotes
     return query
 
 
-def search_academic_literature(query: str, limit: int = 5) -> list:
+def search_academic_literature(query: str, limit: int = 10) -> list:
     """
     Orchestrates searches across arXiv, Semantic Scholar, and Crossref.
     Aggregates, dedups, and ranks results. Returns list of papers.
@@ -445,21 +510,23 @@ def search_academic_literature(query: str, limit: int = 5) -> list:
     # Optimize query for academic databases
     search_term = optimize_search_query(query)
     
-    arxiv_results = search_arxiv(search_term, limit)
-    scholar_results = search_semantic_scholar(search_term, limit)
+    # Fetch more candidates to ensure we can filter and find the best ones
+    fetch_limit = limit + 5
+    arxiv_results = search_arxiv(search_term, fetch_limit)
+    scholar_results = search_semantic_scholar(search_term, fetch_limit)
     
     combined_results = arxiv_results + scholar_results
-    final_papers = rank_and_deduplicate_papers(combined_results, target_limit=limit)
+    final_papers = rank_and_deduplicate_papers(combined_results, target_limit=limit, query=search_term)
     
     # Fallback to Crossref if we have fewer unique papers than requested limit
     if len(final_papers) < limit:
         needed = limit - len(final_papers)
         print(f"[*] Academic Search: Only found {len(final_papers)} papers from arXiv/Semantic Scholar. Querying Crossref as fallback for {needed} more papers.")
-        crossref_results = search_crossref(search_term, limit=needed + 3) # fetch slightly more to allow deduplication
+        crossref_results = search_crossref(search_term, limit=needed + 5) # fetch slightly more to allow deduplication
         
         # Combine all and re-rank/dedup
         all_results = combined_results + crossref_results
-        final_papers = rank_and_deduplicate_papers(all_results, target_limit=limit)
+        final_papers = rank_and_deduplicate_papers(all_results, target_limit=limit, query=search_term)
     else:
         print(f"[*] Academic Search: Retrieved {len(final_papers)} high-quality papers from arXiv/Semantic Scholar. Skipping Crossref fallback.")
         

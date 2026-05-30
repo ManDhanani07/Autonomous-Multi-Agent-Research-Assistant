@@ -367,6 +367,7 @@ if initiate_btn:
         st.session_state.executive_summary = None
         st.session_state.critique_analysis = None
         st.session_state.planner_roadmap   = None
+        st.session_state.fact_validation_results = None
         st.session_state.retrieved_memories = []   # RAG: store for UI display
         st.session_state.academic_papers = []      # Academic sources
         st.session_state.fallback_used = False     # Fallback flag
@@ -509,28 +510,50 @@ if getattr(st.session_state, 'running', False):
         st.session_state.executive_summary = summarizer_task.result
         st.session_state.critique_analysis = critic_task.result
         st.session_state.optimized_data = self_corr_task.result
+        st.session_state.fact_validation_results = fact_val_task.result
         
         # Combine memories and chunks
         st.session_state.retrieved_memories = rag_task.result.get("memories", [])
         
-        # Combine lists from parallel researchers
+        # Combine lists from parallel researchers and deduplicate them
         academic_papers = []
+        seen_paper_titles = set()
         pdf_chunks = []
         sources = []
+        seen_source_keys = set()
         fallback_used = False
         
         for i in range(3):
             res_task = orchestrator.tasks[f"researcher_{i}"]
             if res_task.result:
-                academic_papers.extend(res_task.result.get("academic_papers", []))
+                # Deduplicate and add papers
+                for paper in res_task.result.get("academic_papers", []):
+                    title = paper.get("title", "")
+                    title_norm = "".join([c.lower() for c in title if c.isalnum()])
+                    if title_norm and title_norm not in seen_paper_titles:
+                        seen_paper_titles.add(title_norm)
+                        academic_papers.append(paper)
+                        
                 pdf_chunks.extend(res_task.result.get("pdf_chunks", []))
-                sources.extend(res_task.result.get("sources", []))
+                
+                # Deduplicate and add sources
+                for src in res_task.result.get("sources", []):
+                    url = src.get("url", "")
+                    title = src.get("title", "")
+                    key = url if url else title
+                    if key and key not in seen_source_keys:
+                        seen_source_keys.add(key)
+                        sources.append(src)
+                        
                 if res_task.result.get("fallback_used", False):
                     fallback_used = True
                     
-        st.session_state.academic_papers = academic_papers
+        # Sort combined list by ranking score descending (or citations) and keep only top 10
+        academic_papers.sort(key=lambda x: x.get("ranking_score", x.get("citations", 0)), reverse=True)
+        
+        st.session_state.academic_papers = academic_papers[:10]
         st.session_state.retrieved_pdf_chunks = pdf_chunks
-        st.session_state.sources = sources
+        st.session_state.sources = sources[:10]
         st.session_state.fallback_used = fallback_used
         st.session_state.memory_saved = memory_task.result
         st.session_state.memory_error = None if memory_task.result else "Memory storage failed to archive."
@@ -757,6 +780,118 @@ if getattr(st.session_state, 'running', False):
                             """,
                             unsafe_allow_html=True
                         )
+                
+                # ── Fact Verification Panel ────────────────────────────────
+                fact_res = getattr(st.session_state, "fact_validation_results", None)
+                if fact_res and isinstance(fact_res, dict):
+                    trust_score = fact_res.get("trust_score", 100.0)
+                    halluc_score = fact_res.get("hallucination_score", 0.0)
+                    conf_label = fact_res.get("confidence_label", "High Trust")
+                    claims = fact_res.get("claims_validation", [])
+                    warnings = fact_res.get("warnings", [])
+                    
+                    if trust_score >= 85.0:
+                        banner_color = "linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(52, 211, 153, 0.03) 100%)"
+                        border_color = "#10b981"
+                        label_color = "#34d399"
+                    elif trust_score >= 60.0:
+                        banner_color = "linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 191, 36, 0.03) 100%)"
+                        border_color = "#f59e0b"
+                        label_color = "#fbbf24"
+                    else:
+                        banner_color = "linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, rgba(248, 113, 113, 0.03) 100%)"
+                        border_color = "#ef4444"
+                        label_color = "#f87171"
+                        
+                    st.markdown(
+                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #10b981; "
+                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
+                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>"
+                        f" AI-Powered Fact Verification &amp; Hallucination Audit</h3>",
+                        unsafe_allow_html=True
+                    )
+                    
+                    st.markdown(
+                        f"""
+                        <div style='background: {banner_color}; border-left: 4px solid {border_color}; padding: 16px; border-radius: 8px; margin-bottom: 20px;'>
+                            <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;'>
+                                <div>
+                                    <h4 style='margin: 0; color: #ffffff; font-size: 1.02rem;'>Pipeline Trust Classification: <span style='color: {label_color};'>{conf_label}</span></h4>
+                                    <p style='margin: 4px 0 0 0; color: #a1a1aa; font-size: 0.88rem;'>
+                                        Every statement in the consolidated draft was cross-checked with all retrieved references.
+                                    </p>
+                                </div>
+                                <div style='display: flex; gap: 16px; align-items: center;'>
+                                    <div style='text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 8px 16px; border-radius: 8px;'>
+                                        <span style='font-size: 1.2rem; font-weight: 700; color: #34d399;'>{trust_score}%</span>
+                                        <div style='font-size: 0.65rem; color: #71717a; text-transform: uppercase; letter-spacing:0.05em;'>Trust Score</div>
+                                    </div>
+                                    <div style='text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 8px 16px; border-radius: 8px;'>
+                                        <span style='font-size: 1.2rem; font-weight: 700; color: {border_color};'>{halluc_score}%</span>
+                                        <div style='font-size: 0.65rem; color: #71717a; text-transform: uppercase; letter-spacing:0.05em;'>Hallucination</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    if warnings:
+                        st.markdown(
+                            f"<div style='background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;'>"
+                            f"<h5 style='margin: 0 0 10px 0; color: #fca5a5; display: flex; align-items: center; gap: 8px; font-size: 0.92rem;'>"
+                            f"<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#fca5a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>"
+                            f" Hallucination Warnings Flagged ({len(warnings)})</h5>"
+                            + "".join([f"<div style='font-size: 0.82rem; color: #fca5a5; margin-bottom: 6px; padding-left: 20px; position: relative;'>• {w}</div>" for w in warnings]) +
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        
+                    with st.expander(f"👁️ View Granular Claim Verification Breakdown ({len(claims)} statements audited)"):
+                        for c_idx, c in enumerate(claims, start=1):
+                            status = c.get("status", "Verified")
+                            claim_text = c.get("claim", "")
+                            explanation = c.get("explanation", "")
+                            source = c.get("source", "N/A")
+                            conf = c.get("confidence_score", 1.0)
+                            
+                            if status == "Verified":
+                                s_badge = "<span style='background:rgba(16,185,129,0.08);color:#34d399;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(16,185,129,0.18);'>Verified</span>"
+                                icon_color = "#34d399"
+                                icon_path = "<polyline points='20 6 9 17 4 12'></polyline>"
+                            elif status == "Partially Supported":
+                                s_badge = "<span style='background:rgba(245,158,11,0.08);color:#fbbf24;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(245,158,11,0.18);'>Partially Supported</span>"
+                                icon_color = "#fbbf24"
+                                icon_path = "<circle cx='12' cy='12' r='10'></circle><line x1='12' y1='8' x2='12' y2='12'></line><line x1='12' y1='16' x2='12.01' y2='16'></line>"
+                            else:
+                                s_badge = "<span style='background:rgba(239,68,68,0.08);color:#f87171;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(239,68,68,0.18);'>Unsupported</span>"
+                                icon_color = "#f87171"
+                                icon_path = "<line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line>"
+                                
+                            st.markdown(
+                                f"""
+                                <div style='padding: 12px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.02); border-radius: 6px;'>
+                                    <div style='display: flex; align-items: flex-start; gap: 10px;'>
+                                        <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='{icon_color}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0; margin-top:2px;'>{icon_path}</svg>
+                                        <div style='flex: 1;'>
+                                            <div style='display: flex; align-items: center; gap: 10px; flex-wrap: wrap;'>
+                                                <strong style='font-size: 0.85rem; color: #ffffff;'>Claim {c_idx}</strong>
+                                                {s_badge}
+                                                <span style='font-size: 0.72rem; color: #71717a;'>Confidence: {conf*100:.0f}%</span>
+                                            </div>
+                                            <p style='margin: 6px 0; font-size: 0.85rem; color: #e4e4e7;'>"{claim_text}"</p>
+                                            <div style='font-size: 0.78rem; color: #a1a1aa; margin-top: 4px;'>
+                                                <strong>Source Reference:</strong> <code style='font-family: monospace; background: rgba(255,255,255,0.03); padding: 1px 5px; border-radius: 3px; color: #e4e4e7;'>{source}</code>
+                                            </div>
+                                            <p style='margin: 4px 0 0 0; font-size: 0.78rem; color: #71717a;'><em>Reasoning:</em> {explanation}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                
                 # ── RAG Memory Panel ──────────────────────────────────────
                 retrieved_mems = getattr(st.session_state, "retrieved_memories", [])
                 if retrieved_mems:
@@ -774,16 +909,42 @@ if getattr(st.session_state, 'running', False):
                         unsafe_allow_html=True
                     )
 
+                    # Retrieve global search analytics from the first retrieved memory
+                    analytics = retrieved_mems[0].get("analytics")
+                    if analytics:
+                        st.markdown(
+                            f"""
+                            <div style='background: rgba(52, 211, 153, 0.04); border: 1px dashed rgba(52, 211, 153, 0.25);
+                                        border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;'>
+                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
+                                    ⚡ <strong>RAG Search Latency:</strong> {analytics.get('latency_ms', 0)}ms
+                                </div>
+                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
+                                    🔍 <strong>Scanned Candidates:</strong> {analytics.get('scanned_candidates', 0)}
+                                </div>
+                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
+                                    ✂️ <strong>Deduplicated &amp; Merged:</strong> {analytics.get('deduplicated_count', 0)}
+                                </div>
+                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
+                                    🏆 <strong>Max Source Confidence:</strong> {analytics.get('top_confidence', '0%')}
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                     for idx, mem in enumerate(retrieved_mems, start=1):
                         sim_pct   = mem.get("similarity_pct", "N/A")
                         sim_val   = mem.get("similarity_score", 0)
+                        conf_val  = mem.get("confidence_score", sim_val)
+                        conf_pct  = mem.get("confidence_pct", sim_pct)
                         mem_topic = mem.get("topic", "Unknown Topic")
                         mem_date  = mem.get("metadata", {}).get("timestamp", "")
 
-                        # Colour-code the similarity badge
-                        if sim_val >= 0.70:
+                        # Colour-code the confidence badge
+                        if conf_val >= 0.70:
                             badge_colour = "#10b981"   # green  — high relevance
-                        elif sim_val >= 0.45:
+                        elif conf_val >= 0.45:
                             badge_colour = "#f59e0b"   # amber  — moderate
                         else:
                             badge_colour = "#6366f1"   # indigo — low but above threshold
@@ -795,7 +956,7 @@ if getattr(st.session_state, 'running', False):
                             pass
 
                         # Single expander with Lucide icon header INSIDE (no duplication)
-                        with st.expander(f"🗂  Memory {idx}  ·  {sim_pct} relevance  —  {mem_topic[:55]}{'...' if len(mem_topic) > 55 else ''}"):
+                        with st.expander(f"🗂  Memory {idx}  ·  {conf_pct} confidence  —  {mem_topic[:55]}{'...' if len(mem_topic) > 55 else ''}"):
                             # Rich Lucide icon title row inside
                             st.markdown(
                                 f"<div style='display:flex;align-items:center;gap:12px;"
@@ -814,7 +975,7 @@ if getattr(st.session_state, 'running', False):
                                 f"</div>"
                                 f"<span style='background:{badge_colour}22;color:{badge_colour};"
                                 f"padding:4px 12px;border-radius:20px;font-size:0.8rem;"
-                                f"font-weight:700;border:1px solid {badge_colour}55;flex-shrink:0;'>{sim_pct}</span>"
+                                f"font-weight:700;border:1px solid {badge_colour}55;flex-shrink:0;'>{conf_pct}</span>"
                                 f"</div>",
                                 unsafe_allow_html=True
                             )
@@ -834,7 +995,7 @@ if getattr(st.session_state, 'running', False):
                                 f"padding:5px 12px;border-radius:20px;font-size:0.8rem;"
                                 f"border:1px solid {badge_colour}40;font-weight:700;'>"
                                 f"<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='{badge_colour}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>"
-                                f" Similarity: {sim_pct}</span>"
+                                f" Confidence: {conf_pct}</span>"
                                 # ID badge
                                 f"<span style='display:inline-flex;align-items:center;gap:6px;"
                                 f"background:rgba(255,255,255,0.05);color:#71717a;"
@@ -845,8 +1006,33 @@ if getattr(st.session_state, 'running', False):
                                 unsafe_allow_html=True
                             )
 
+                            # Hybrid score details
+                            vector_score = mem.get("vector_score", sim_val)
+                            keyword_score = mem.get("keyword_score", 0.0)
+                            boosting_reasons = mem.get("boosting_reasons", [])
+                            
+                            st.markdown(
+                                f"""
+                                <div style='margin-bottom: 12px; padding: 10px 14px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.03);'>
+                                    <p style='margin: 0 0 6px 0; font-size: 0.75rem; text-transform: uppercase; color: #71717a; font-weight: 700; letter-spacing: 0.05em;'>RAG Retrieval Optimization Details</p>
+                                    <div style='display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 6px;'>
+                                        <span style='display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #a1a1aa;'>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                            <strong>Semantic Vector Similarity:</strong> {vector_score * 100:.1f}%
+                                        </span>
+                                        <span style='display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #a1a1aa;'>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                                            <strong>Sparse Keyword Overlap:</strong> {keyword_score * 100:.1f}%
+                                        </span>
+                                    </div>
+                                    {f"<div style='display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #34d399; margin-top: 4px;'><svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'/></svg><strong>Active Score Boosts:</strong> " + " · ".join(boosting_reasons) + "</div>" if boosting_reasons else ""}
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
                             # Similarity progress bar
-                            st.progress(min(sim_val, 1.0))
+                            st.progress(min(conf_val, 1.0))
 
                             # Full stored memory content
                             st.markdown(mem.get("document", ""))

@@ -135,81 +135,246 @@ def save_research_to_memory(topic: str, full_research: str,
     print(f"[Memory Manager] Research memory saved: {session_id}")
 
 
+def _compute_keyword_similarity(q: str, doc: str) -> float:
+    import re
+    stop_words = {
+        "the", "and", "a", "of", "to", "in", "is", "that", "it", "on", "for", "as", "with",
+        "was", "were", "by", "an", "at", "are", "be", "this", "from", "or", "but", "not", "your", "my", "our"
+    }
+    q_tokens = [w.lower() for w in re.findall(r'\b\w{2,}\b', q) if w.lower() not in stop_words]
+    doc_tokens = [w.lower() for w in re.findall(r'\b\w{2,}\b', doc) if w.lower() not in stop_words]
+    
+    if not q_tokens or not doc_tokens:
+        return 0.0
+        
+    doc_token_set = set(doc_tokens)
+    matches = sum(1 for tok in q_tokens if tok in doc_token_set)
+    token_overlap = matches / len(q_tokens)
+    
+    # Calculate simple frequency density
+    match_count = sum(doc_tokens.count(tok) for tok in q_tokens)
+    tf_density = match_count / (len(doc_tokens) + 10)
+    
+    score = 0.8 * token_overlap + 0.2 * min(1.0, tf_density * 5)
+    return round(min(1.0, score), 4)
+
+def _are_duplicates(doc1: str, doc2: str) -> bool:
+    import re
+    # Convert documents to token sets (excluding very short words)
+    tokens1 = set(re.findall(r'\b\w{3,}\b', doc1.lower()))
+    tokens2 = set(re.findall(r'\b\w{3,}\b', doc2.lower()))
+    if not tokens1 or not tokens2:
+        return False
+    intersection = tokens1.intersection(tokens2)
+    union = tokens1.union(tokens2)
+    jaccard = len(intersection) / len(union)
+    return jaccard > 0.75
+
 def search_memory_context(query: str,
                            n_results: int = 3,
                            min_similarity: float = 0.20,
-                           workspace: str = "default"
+                           workspace: str = "default",
+                           metadata_filter: dict = None
                            ) -> tuple[str, list]:
     """
     RAG Context Builder — retrieves and formats related memories for agent injection.
-
-    This is the primary interface between the Researcher Agent and the memory system.
-    It retrieves semantically similar past research and formats it into a clean
-    context block that can be directly injected into the LLM prompt.
-
-    Workflow:
-        query → retrieve_similar_research() → filter by threshold
-              → format as structured context → return for prompt injection
-
-    Args:
-        query          (str):   The new research topic.
-        n_results      (int):   Max memories to retrieve (default 3).
-        min_similarity (float): Minimum relevance threshold (default 0.20 = 20%).
-        workspace      (str):   The active workspace to retrieve from.
-
-    Returns:
-        tuple[str, list]:
-            - context_block (str):  Formatted string ready to inject into prompt.
-                                    Empty string "" if no relevant memories found.
-            - memories      (list): Raw memory dicts for UI display (may be empty).
-                                    Each dict matches the retrieve_similar_research() schema.
+    Features hybrid search, reranking, metadata filtering, duplicate detection,
+    semantic score boosting, dynamic thresholding, and latency tracking.
     """
+    import time
+    start_time = time.time()
+    
     print(f"[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{query}'")
-
+    
     from memory.chroma_store import retrieve_similar_research
-
+    
+    # Step 1: Fetch a larger candidate set from ChromaDB
+    candidate_n = max(12, n_results * 3)
     try:
-        memories = retrieve_similar_research(
+        # We query with a low threshold to get enough candidates for reranking
+        raw_candidates = retrieve_similar_research(
             query=query,
-            n_results=n_results,
-            min_similarity=min_similarity,
+            n_results=candidate_n,
+            min_similarity=0.02,
             workspace=workspace
         )
     except Exception as e:
-        print(f"[Memory Retrieval Error] Failed to search memory: {e}")
+        print(f"[Memory Retrieval Error] Failed to retrieve candidates: {e}")
         return "", []
-
-    # ── No relevant memories ───────────────────────────────────────────────
-    if not memories:
-        print("[Memory Retrieval] No relevant memory found. Proceeding without context.")
+        
+    if not raw_candidates:
+        print("[Memory Retrieval] No relevant memories found in ChromaDB.")
         return "", []
-
-    print(f"[Memory Retrieval] Found {len(memories)} relevant memories.")
-
-    # ── Build the formatted context block ─────────────────────────────────
+        
+    # Step 2: Apply Hybrid Score Fusion, Metadata Filtering, and Boosting
+    processed_candidates = []
+    for cand in raw_candidates:
+        # Metadata Filtering (Pre-filtering)
+        if metadata_filter:
+            metadata = cand.get("metadata", {})
+            match = True
+            for k, v in metadata_filter.items():
+                if metadata.get(k) != v:
+                    match = False
+                    break
+            if not match:
+                continue
+                
+        # Sparse Keyword Scoring
+        vector_score = cand.get("similarity_score", 0.0)
+        keyword_score = _compute_keyword_similarity(query, cand.get("document", ""))
+        
+        # Score Fusion (70% Vector, 30% Keyword)
+        hybrid_score = 0.7 * vector_score + 0.3 * keyword_score
+        
+        # Semantic Boosting
+        boosting_reasons = []
+        topic = cand.get("topic", "").lower()
+        
+        # Exact/Sub-phrase query match in topic
+        if query.lower() in topic or topic in query.lower():
+            hybrid_score += 0.15
+            boosting_reasons.append("Exact/Sub-phrase Topic Match (+15%)")
+            
+        # Comprehensive report structure match
+        doc_content = cand.get("document", "")
+        if "SUMMARY:" in doc_content and "CRITIQUE:" in doc_content and "FULL RESEARCH:" in doc_content:
+            hybrid_score += 0.10
+            boosting_reasons.append("Comprehensive Report Structure (+10%)")
+            
+        # Recency Boost
+        timestamp_str = cand.get("metadata", {}).get("timestamp")
+        if timestamp_str:
+            try:
+                from datetime import datetime
+                timestamp = datetime.fromisoformat(timestamp_str)
+                age_seconds = (datetime.now() - timestamp).total_seconds()
+                if age_seconds < 86400: # 24 hours
+                    hybrid_score += 0.05
+                    boosting_reasons.append("Recent Report <24h (+5%)")
+            except Exception:
+                pass
+                
+        hybrid_score = min(1.0, hybrid_score)
+        
+        # Source Confidence Scoring
+        doc_len = len(doc_content)
+        length_bonus = 0.10 if doc_len > 1500 else (0.05 if doc_len > 500 else 0.0)
+        
+        metadata = cand.get("metadata", {})
+        has_full_metadata = all(k in metadata for k in ["topic", "timestamp", "type"])
+        metadata_bonus = 0.10 if has_full_metadata else 0.0
+        
+        confidence_score = 0.8 * hybrid_score + length_bonus + metadata_bonus
+        confidence_score = round(min(1.0, confidence_score), 4)
+        
+        # Attach intermediate details to memory
+        cand_copy = cand.copy()
+        cand_copy["vector_score"] = round(vector_score, 4)
+        cand_copy["keyword_score"] = round(keyword_score, 4)
+        cand_copy["hybrid_score"] = round(hybrid_score, 4)
+        cand_copy["confidence_score"] = confidence_score
+        cand_copy["confidence_pct"] = f"{confidence_score * 100:.1f}%"
+        cand_copy["boosting_reasons"] = boosting_reasons
+        
+        processed_candidates.append(cand_copy)
+        
+    # Step 3: Sort by Confidence Score descending
+    processed_candidates.sort(key=lambda x: x["confidence_score"], reverse=True)
+    
+    # Step 4: Duplicate Detection (Jaccard token comparison)
+    unique_candidates = []
+    for cand in processed_candidates:
+        is_dup = False
+        for unique in unique_candidates:
+            if _are_duplicates(cand.get("document", ""), unique.get("document", "")):
+                is_dup = True
+                break
+        if not is_dup:
+            unique_candidates.append(cand)
+            
+    if not unique_candidates:
+        print("[Memory Retrieval] No unique memories remained after filtering.")
+        return "", []
+        
+    # Step 5: Dynamic Thresholding & Dynamic Top-K Selection
+    top_score = unique_candidates[0]["confidence_score"]
+    dynamic_min = max(min_similarity, top_score * 0.40)
+    
+    filtered_candidates = []
+    for cand in unique_candidates:
+        if cand["confidence_score"] >= dynamic_min:
+            filtered_candidates.append(cand)
+            
+    # Apply dynamic slope cutoff (sudden drop in confidence > 0.35)
+    final_candidates = []
+    for i, cand in enumerate(filtered_candidates):
+        if i > 0:
+            prev_score = filtered_candidates[i-1]["confidence_score"]
+            if prev_score - cand["confidence_score"] > 0.35:
+                print(f"[Memory Retrieval] Dynamic slope cutoff: Dropped memory {cand.get('id')} (score drop: {prev_score:.2f} -> {cand['confidence_score']:.2f})")
+                break
+        final_candidates.append(cand)
+        
+    # Slice to final size
+    selected_memories = final_candidates[:n_results]
+    
+    # Step 6: Logging & Latency Analytics
+    latency_ms = int((time.time() - start_time) * 1000)
+    dedup_count = len(processed_candidates) - len(unique_candidates)
+    
+    analytics = {
+        "latency_ms": latency_ms,
+        "scanned_candidates": len(raw_candidates),
+        "deduplicated_count": dedup_count,
+        "selected_count": len(selected_memories),
+        "top_confidence": f"{top_score * 100:.1f}%" if selected_memories else "0.0%"
+    }
+    
+    # Attach analytics to all returned memory dicts so the UI can display it
+    for mem in selected_memories:
+        mem["analytics"] = analytics
+        
+    print(f"[Memory Retrieval] Retrieval complete in {latency_ms}ms. "
+          f"Scanned: {len(raw_candidates)}, Deduplicated: {dedup_count}, Final: {len(selected_memories)} memories.")
+          
+    if not selected_memories:
+        return "", []
+        
+    # Step 7: Build structured context block with analytics details
     lines = [
         "╔══════════════════════════════════════════════════════════╗",
-        "║         RETRIEVED SEMANTIC MEMORY CONTEXT (RAG)          ║",
+        "║      ADVANCED RETRIEVED SEMANTIC MEMORY CONTEXT (RAG)     ║",
         "╚══════════════════════════════════════════════════════════╝",
+        "",
+        "┌──────────────────────────────────────────────────────────┐",
+        f"│ RAG PIPELINE TELEMETRY ANALYTICS                         │",
+        f"│ - Search Latency: {latency_ms} ms                              │",
+        f"│ - Scanned Candidate Memories: {len(raw_candidates)}                          │",
+        f"│ - Deduplicated & Merged: {dedup_count}                               │",
+        f"│ - Top Source Confidence: {top_score * 100:.1f}%                         │",
+        "└──────────────────────────────────────────────────────────┘",
         "",
         "The following information was retrieved from your previous research sessions.",
         "Use it to provide deeper, connected, and context-aware analysis.",
         "Cross-reference this memory with new web data for maximum accuracy.",
         "",
     ]
-
-    for idx, mem in enumerate(memories, start=1):
+    
+    for idx, mem in enumerate(selected_memories, start=1):
         topic_label = mem.get("topic", "Unknown Topic")
-        sim_pct     = mem.get("similarity_pct", "N/A")
+        conf_pct    = mem.get("confidence_pct", "N/A")
         date        = mem.get("metadata", {}).get("timestamp", "Unknown Date")
-
-        # Truncate document to save tokens (top 1200 chars = ~300 tokens)
+        
+        # Include score details in the context block for the agent to know relevance details
+        score_breakdown = f"Confidence: {conf_pct} (Vector: {mem['vector_score']*100:.0f}%, Keyword: {mem['keyword_score']*100:.0f}%)"
+        
         doc_snippet = mem.get("document", "")[:1200]
         if len(mem.get("document", "")) > 1200:
             doc_snippet += "\n[... content truncated ...]"
-
+            
         lines += [
-            f"── Memory {idx}: {topic_label}  (Relevance: {sim_pct}) ──",
+            f"── Memory {idx}: {topic_label}  ({score_breakdown}) ──",
             f"Recorded: {date}",
             "",
             doc_snippet,
@@ -217,11 +382,8 @@ def search_memory_context(query: str,
             "─" * 60,
             "",
         ]
-
+        
     lines.append("══ END OF RETRIEVED MEMORY CONTEXT ══")
     context_block = "\n".join(lines)
-
-    print(f"[Memory Injection] Context block prepared — "
-          f"{len(memories)} memory/memories ready to inject into Researcher Agent.")
-
-    return context_block, memories
+    
+    return context_block, selected_memories
