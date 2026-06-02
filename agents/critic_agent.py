@@ -86,8 +86,8 @@ def critique_research(research_text: str, summary_text: str) -> dict:
         return {"error": error_msg}
 
     # --- Token budget: cap both inputs to avoid exceeding the daily quota ---
-    MAX_RESEARCH_CHARS = 4_000
-    MAX_SUMMARY_CHARS  = 2_000
+    MAX_RESEARCH_CHARS = 100_000
+    MAX_SUMMARY_CHARS  = 20_000
     if len(research_text) > MAX_RESEARCH_CHARS:
         research_text = research_text[:MAX_RESEARCH_CHARS] + "\n\n[... truncated for token budget ...]"
     if len(summary_text) > MAX_SUMMARY_CHARS:

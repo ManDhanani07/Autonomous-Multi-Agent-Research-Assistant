@@ -521,7 +521,7 @@ def refine_research(topic: str, previous_report: str, critique_json: dict) -> st
     prompt = create_refinement_prompt(topic, previous_report, critique_json)
     
     print("[Researcher Agent] Transmitting refinement request to Groq...")
-    optimized_report = ask_groq(prompt)
+    optimized_report = ask_groq(prompt, max_tokens=4000)
     
     if optimized_report.startswith("⚠️"):
         print(f"[Researcher Agent Error] API quota issue during refinement.")

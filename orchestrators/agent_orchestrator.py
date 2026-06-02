@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import agents
 from agents.planner_agent import generate_plan
 from agents.researcher_agent import generate_research, refine_research
-from agents.fact_validation_agent import validate_research_facts
+from agents.draft_consolidation_agent import consolidate_research_drafts
 from agents.summarizer_agent import summarize_research
 from agents.critic_agent import critique_research
 from agents.report_agent import generate_final_report
@@ -75,17 +75,17 @@ class AgentOrchestrator:
                 run_func=lambda task, idx=i: self._run_researcher(idx)
             )
             
-        self.tasks["fact_validation"] = Task(
-            task_id="fact_validation",
-            name="3. Fact Validation Agent",
+        self.tasks["draft_consolidation"] = Task(
+            task_id="draft_consolidation",
+            name="3. Report Consolidation Agent",
             dependencies=["researcher_0", "researcher_1", "researcher_2"],
-            run_func=self._run_fact_validation
+            run_func=self._run_draft_consolidation
         )
         
         self.tasks["rag_enhancement"] = Task(
             task_id="rag_enhancement",
             name="4. Memory/RAG Enhancement",
-            dependencies=["fact_validation"],
+            dependencies=["draft_consolidation"],
             run_func=self._run_rag_enhancement
         )
         
@@ -179,8 +179,8 @@ class AgentOrchestrator:
             "fallback_used": research_result.get("fallback_used", False)
         }
 
-    async def _run_fact_validation(self, task: Task) -> dict:
-        self._log("Fact Validation Agent: Evaluating subtopic report drafts...")
+    async def _run_draft_consolidation(self, task: Task) -> dict:
+        self._log("Report Consolidation Agent: Consolidating subtopic report drafts...")
         
         # Compile all subtopic reports
         subtopic_reports = []
@@ -192,43 +192,18 @@ class AgentOrchestrator:
             })
             
         loop = asyncio.get_running_loop()
-        validated_text = await loop.run_in_executor(
+        consolidated_text = await loop.run_in_executor(
             None,
-            validate_research_facts,
+            consolidate_research_drafts,
             subtopic_reports
         )
         
-        if validated_text.startswith("⚠️"):
-            raise ValueError(f"Fact Validation Agent failed: {validated_text[:100]}")
+        if consolidated_text.startswith("⚠️"):
+            raise ValueError(f"Report Consolidation Agent failed: {consolidated_text[:100]}")
             
-        # Run granular claims verification against all collected references
-        self._log("Fact Validation Agent: Extracting claims and checking against sources...")
-        from agents.fact_validator_agent import validate_report_with_sources
-        
-        sources = []
-        pdf_chunks = []
-        for i in range(3):
-            res_task = self.tasks[f"researcher_{i}"]
-            if res_task.result:
-                sources.extend(res_task.result.get("sources", []))
-                pdf_chunks.extend(res_task.result.get("pdf_chunks", []))
-                
-        validation_res = await loop.run_in_executor(
-            None,
-            validate_report_with_sources,
-            validated_text,
-            sources,
-            pdf_chunks
-        )
-        
-        self._log(f"Fact Validation Agent: Completed verification. Trust Score: {validation_res['trust_score']}%")
+        self._log("Report Consolidation Agent: Drafts consolidated successfully.")
         return {
-            "validated_text": validation_res["validated_text"],
-            "trust_score": validation_res["trust_score"],
-            "hallucination_score": validation_res["hallucination_score"],
-            "confidence_label": validation_res["confidence_label"],
-            "claims_validation": validation_res["claims_validation"],
-            "warnings": validation_res["warnings"]
+            "validated_text": consolidated_text
         }
 
     async def _run_rag_enhancement(self, task: Task) -> dict:
@@ -253,7 +228,7 @@ class AgentOrchestrator:
 
     async def _run_summarizer(self, task: Task) -> str:
         self._log("Summarizer Agent: Creating executive summary findings...")
-        validated_text = self.tasks["fact_validation"].result["validated_text"]
+        validated_text = self.tasks["draft_consolidation"].result["validated_text"]
         
         loop = asyncio.get_running_loop()
         summary = await loop.run_in_executor(
@@ -270,45 +245,26 @@ class AgentOrchestrator:
 
     async def _run_critic(self, task: Task) -> dict:
         self._log("Critic Agent: Rating and reviewing consolidated research quality...")
-        validation_res = self.tasks["fact_validation"].result
-        validated_text = validation_res["validated_text"]
+        consolidated_text = self.tasks["draft_consolidation"].result["validated_text"]
         summary = self.tasks["summarizer"].result
-        
-        # Inject fact-check trust score and warning metadata so the Critic can penalize if needed
-        trust_score = validation_res.get("trust_score", 100.0)
-        warnings = validation_res.get("warnings", [])
-        
-        validation_meta = f"\n\n### FACT CHECK METADATA (DO NOT REMOVE)\n- Fact Trust Score: {trust_score}%\n- Hallucination Score: {100.0 - trust_score}%\n"
-        if warnings:
-            validation_meta += "- Unsupported Claims Detected:\n" + "\n".join([f"  * {w}" for w in warnings]) + "\n"
-            
-        research_text_for_critic = validated_text + validation_meta
         
         loop = asyncio.get_running_loop()
         critique = await loop.run_in_executor(
             None,
             critique_research,
-            research_text_for_critic,
+            consolidated_text,
             summary
         )
         
         if "error" in critique:
             raise ValueError(f"Critic failed: {critique.get('error')}")
             
-        # Apply hallucination penalty based on Trust Score to force correction loop
         score = critique.get("score", 0.0)
-        if trust_score < 85.0:
-            penalty = round((85.0 - trust_score) / 10.0, 1)
-            score = max(1.0, round(score - penalty, 1))
-            critique["score"] = score
-            critique["weaknesses"] = critique.get("weaknesses", []) + [f"Low Fact Trust Score ({trust_score}%). Unsupported claims detected."]
-            self._log(f"Critic Agent: Applied hallucination penalty of -{penalty}. Adjusted score: {score}/10.")
-            
         self._log(f"Critic Agent: Evaluation complete. Score: {score}/10.")
         return critique
 
     async def _run_self_correction(self, task: Task) -> dict:
-        validated_text = self.tasks["fact_validation"].result["validated_text"]
+        validated_text = self.tasks["draft_consolidation"].result["validated_text"]
         critique = self.tasks["critic"].result
         score = float(critique.get("score", 0.0))
         
@@ -316,6 +272,7 @@ class AgentOrchestrator:
             self._log(f"Self-Correction: Quality score {score} >= 8.5. Skipping refinement loop.")
             task.status = "SKIPPED"
             return {
+                "original_report": validated_text,
                 "refined_text": validated_text,
                 "refined_summary": self.tasks["summarizer"].result,
                 "refined_critique": critique,
@@ -339,6 +296,7 @@ class AgentOrchestrator:
         if refined_text.startswith("⚠️"):
             self._log("Self-Correction Warning: Refinement failed. Using original validated drafts.")
             return {
+                "original_report": validated_text,
                 "refined_text": validated_text,
                 "refined_summary": self.tasks["summarizer"].result,
                 "refined_critique": critique,
@@ -355,6 +313,19 @@ class AgentOrchestrator:
         self._log("Self-Correction: Evaluating refined draft score...")
         refined_critique = await loop.run_in_executor(None, critique_research, refined_text, refined_summary)
         
+        if "error" in refined_critique:
+            self._log(f"Self-Correction Warning: Critic failed to evaluate refined draft. Error: {refined_critique['error']}. Reverting to validated v1 drafts.")
+            return {
+                "original_report": validated_text,
+                "refined_text": validated_text,
+                "refined_summary": self.tasks["summarizer"].result,
+                "refined_critique": critique,
+                "final_critique": critique,
+                "original_critique": critique,
+                "optimized": False,
+                "score_delta": 0.0
+            }
+            
         refined_score = float(refined_critique.get("score", 0.0))
         delta = round(refined_score - score, 1)
         self._log(f"Self-Correction: Complete. Original: {score} | Refined: {refined_score} | Delta: {delta}")
@@ -362,6 +333,7 @@ class AgentOrchestrator:
         if refined_score > score:
             self._log("Self-Correction: Retaining optimized v2 draft.")
             return {
+                "original_report": validated_text,
                 "refined_text": refined_text,
                 "refined_summary": refined_summary,
                 "refined_critique": refined_critique,
@@ -373,13 +345,14 @@ class AgentOrchestrator:
         else:
             self._log("Self-Correction: Optimized draft did not score higher. Reverting to validated v1 drafts.")
             return {
+                "original_report": validated_text,
                 "refined_text": validated_text,
                 "refined_summary": self.tasks["summarizer"].result,
-                "refined_critique": critique,
+                "refined_critique": refined_critique,
                 "final_critique": critique,
                 "original_critique": critique,
                 "optimized": False,
-                "score_delta": delta
+                "score_delta": 0.0
             }
 
     async def _run_report_generator(self, task: Task) -> str:

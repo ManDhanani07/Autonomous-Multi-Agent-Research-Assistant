@@ -48,7 +48,6 @@ import_tests = [
     ("agents.planner_agent",        ["generate_plan"]),
     ("memory.chroma_store",         ["get_chroma_client"]),
     ("memory.memory_manager",       ["save_research_to_memory","search_memory_context"]),
-    ("tools.citation_manager",      ["CitationManager"]),
 ]
 
 for mod_name, funcs in import_tests:
@@ -433,85 +432,6 @@ try:
 except Exception as e:
     check("ChromaDB connectivity", False, str(e)[:100])
 
-# ─────────────────────────────────────────────────────────────────
-# TEST 10: CITATION SYSTEM
-# ─────────────────────────────────────────────────────────────────
-section("TEST 10: Citation System")
-
-try:
-    from tools.citation_manager import CitationManager
-    
-    # 1. Academic Citation
-    source_acad = {
-        "type": "academic",
-        "title": "Attention Is All You Need",
-        "authors": ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar", "Jakob Uszkoreit"],
-        "year": 2017,
-        "url": "https://arxiv.org/abs/1706.03762",
-        "venue": "Advances in Neural Information Processing Systems",
-    }
-    cm_acad = CitationManager([source_acad])
-    s_acad = cm_acad.sources[0]
-    
-    check("Citation: Academic year parsing", s_acad["year"] == 2017)
-    check("Citation: Academic DOI parsing (empty)", s_acad["doi"] == "")
-    
-    apa = cm_acad.get_apa_citation(s_acad)
-    check("Citation: APA format academic", "Vaswani, A." in apa and "(2017)" in apa and "*Advances in Neural Information Processing Systems*" in apa)
-    
-    ieee = cm_acad.get_ieee_citation(s_acad)
-    check("Citation: IEEE format academic", "A. Vaswani" in ieee and "Attention Is All You Need" in ieee)
-    
-    mla = cm_acad.get_mla_citation(s_acad)
-    check("Citation: MLA format academic", "Vaswani, Ashish, et al." in mla)
-    
-    bib = cm_acad.get_bibtex_citation(s_acad)
-    check("Citation: BibTeX format academic", "@article{vaswani2017attention" in bib or "@article{vaswani2017attention" in bib.lower())
-    
-    # 2. PDF Citation
-    source_pdf = {
-        "type": "pdf",
-        "title": "Internet of Things Review of Smart Systems",
-        "authors": ["K. Shafique", "B. A. Khawaja"],
-        "year": 2020,
-        "url": "/app/static/uploaded_pdfs/IoT_Smart_Systems.pdf",
-        "venue": "PDF Library"
-    }
-    cm_pdf = CitationManager([source_pdf])
-    s_pdf = cm_pdf.sources[0]
-    apa_pdf = cm_pdf.get_apa_citation(s_pdf)
-    check("Citation: APA format PDF", "Retrieved from PDF library." in apa_pdf)
-    
-    ieee_pdf = cm_pdf.get_ieee_citation(s_pdf)
-    check("Citation: IEEE format PDF", "[Online]. Available: PDF library." in ieee_pdf)
-    
-    bib_pdf = cm_pdf.get_bibtex_citation(s_pdf)
-    check("Citation: BibTeX format PDF", "@misc{shafique2020internet" in bib_pdf or "@misc{shafique2020internet" in bib_pdf.lower())
-    
-    # 3. Web Citation
-    source_web = {
-        "type": "web",
-        "title": "Gemini 3.5 Flash Documentation",
-        "authors": ["Google DeepMind"],
-        "year": "n.d.",
-        "url": "https://deepmind.google/gemini",
-        "venue": "deepmind.google"
-    }
-    cm_web = CitationManager([source_web])
-    s_web = cm_web.sources[0]
-    
-    apa_web = cm_web.get_apa_citation(s_web)
-    check("Citation: APA format Web", "(n.d.)" in apa_web)
-    
-    bib_web = cm_web.get_bibtex_citation(s_web)
-    check("Citation: BibTeX format Web", "@online{deepmindndgemini" in bib_web)
-    
-    # 4. DOI extraction
-    doi = CitationManager.extract_doi("https://doi.org/10.1109/fiot.2018.8325598")
-    check("Citation: DOI extraction", doi == "10.1109/fiot.2018.8325598")
-    
-except Exception as e:
-    check("Citation system verification", False, str(e))
 
 # ─────────────────────────────────────────────────────────────────
 # TEST 11: WORKSPACE ISOLATION

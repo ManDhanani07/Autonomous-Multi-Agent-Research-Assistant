@@ -11,6 +11,15 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 import streamlit as st
 import os
 import sys
+
+# Force reload local custom modules to prevent Streamlit caching stale backend changes
+for module_name in list(sys.modules.keys()):
+    if (module_name.startswith("orchestrators") or 
+        module_name.startswith("agents") or 
+        module_name.startswith("tools") or 
+        module_name.startswith("memory")):
+        del sys.modules[module_name]
+
 import time
 import json
 import threading
@@ -18,6 +27,7 @@ import threading
 # Add the project root to the Python path so it can import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from frontend.shared_theme import apply_shared_theme
+from tools.pdf_generator import convert_markdown_to_pdf_bytes
 
 # Page configuration
 st.set_page_config(
@@ -33,7 +43,7 @@ apply_shared_theme()
 # ==========================================
 # Lucide Icons (Inline SVGs)
 # ==========================================
-ICON_AI_ENGINE = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>'
+ICON_AI_ENGINE = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>'
 ICON_RESEARCHER = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
 ICON_SUMMARIZER = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>'
 ICON_CRITIC = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/></svg>'
@@ -69,31 +79,33 @@ def strip_fake_links(text: str) -> str:
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', replacer, text)
     return text
 
-def format_report_with_style(report_text: str, sources: list, style: str) -> str:
-    """
-    Dynamically swaps or appends the references section of the report text
-    using the CitationManager with the selected citation style.
-    """
-    if not sources or not report_text:
-        return report_text
-    try:
-        from tools.citation_manager import CitationManager
-        cm = CitationManager(sources)
-        new_references_md = cm.generate_references_section(style)
-        
-        # Locate '## 8. References' or '## References' section
-        import re
-        pattern = r"(##\s*\d*\.?\s*References.*)"
-        match = re.search(pattern, report_text, flags=re.IGNORECASE)
-        if match:
-            header = match.group(1)
-            parts = report_text.split(header, 1)
-            return parts[0] + new_references_md
-        else:
-            return report_text + "\n\n" + new_references_md
-    except Exception as e:
-        print(f"Error formatting bibliography style: {e}")
-        return report_text
+
+# ==========================================
+# Fragment helper: Renders download buttons side-by-side
+# ==========================================
+@st.fragment
+def render_download_buttons_fragment(report_text: str, topic: str):
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            label="📥 Download as .md",
+            data=report_text,
+            file_name=f"Research_Report_{topic.replace(' ', '_')}.md",
+            mime="text/markdown",
+            key="download_md_report_btn_ui",
+            use_container_width=True
+        )
+    with col2:
+        pdf_data = convert_markdown_to_pdf_bytes(report_text)
+        st.download_button(
+            label="📥 Download as .pdf",
+            data=pdf_data,
+            file_name=f"Research_Report_{topic.replace(' ', '_')}.pdf",
+            mime="application/pdf",
+            key="download_pdf_report_btn_ui",
+            use_container_width=True
+        )
+
 
 
 # ==========================================
@@ -107,7 +119,7 @@ st.markdown("""
         <span style="background-color: rgba(99, 102, 241, 0.1); color: #818cf8; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(99, 102, 241, 0.2);">Nexus AI OS v3.0</span>
     </div>
     <h1 style="font-size: 3.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.15; color: #ffffff;">
-        Intelligent Research,<br>Powered by <span style="background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">Nexus Agents.</span>
+        Intelligent Research,<br>Powered by <span style="color: #818cf8; font-weight: 800; text-shadow: 0 0 8px rgba(129, 140, 248, 0.35);">Nexus Agents.</span>
     </h1>
     <p style="font-size: 1.15rem; color: #a1a1aa; font-weight: 400; margin-bottom: 2rem; line-height: 1.6; max-width: 700px;">
         Input your topic below to initialize the multi-agent neural network. Generating highly structured, deeply researched professional reports in seconds.
@@ -115,11 +127,15 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-tab_research, tab_pdf = st.tabs(["🔬 Research Workspace", "📁 Document Library"])
+tab_research, tab_pdf = st.tabs(["Research Workspace", "Document Library"])
 
 with tab_research:
     # Input Section
-    st.markdown("<h3 style='margin-bottom: 16px; color: #ffffff; font-size: 1.4rem;'>Initialize Parameters</h3>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h3 style='margin-bottom: 16px; color: #ffffff; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;'>"
+        f"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#818cf8\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3\"/></svg> Initialize Parameters</h3>",
+        unsafe_allow_html=True
+    )
     topic = st.text_input("Research Topic", placeholder="e.g., Quantum Machine Learning Algorithms...", label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -132,7 +148,11 @@ with tab_research:
     output_ui = st.empty()
 
 with tab_pdf:
-    st.markdown("<h3 style='margin-bottom: 12px; color: #ffffff; font-size: 1.4rem;'>Ingest PDF Literature</h3>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h3 style='margin-bottom: 12px; color: #ffffff; font-size: 1.4rem; display: flex; align-items: center; gap: 8px;'>"
+        f"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fbbf24\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"17 8 12 3 7 8\"/><line x1=\"12\" y1=\"3\" x2=\"12\" y2=\"15\"/></svg> Ingest PDF Literature</h3>",
+        unsafe_allow_html=True
+    )
     st.markdown("<p style='color:#a1a1aa; font-size:0.95rem; margin-bottom:20px;'>Upload academic PDF documents to parse, split, and vectorize their contents into the RAG system database.</p>", unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader("Upload Academic PDF Paper", type=["pdf"])
@@ -187,7 +207,11 @@ with tab_pdf:
     ]
             
     if ingested_papers:
-        st.markdown(f"<h3 style='color:#ffffff; margin-bottom: 16px;'>Ingested Papers ({len(ingested_papers)})</h3>", unsafe_allow_html=True)
+        st.markdown(
+            f"<h3 style='color:#ffffff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;'>"
+            f"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#10b981\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"/><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"/></svg> Ingested Papers ({len(ingested_papers)})</h3>",
+            unsafe_allow_html=True
+        )
         for idx, paper in enumerate(ingested_papers, start=1):
             sections_str = ", ".join(paper.get("sections", []))
             with st.expander(f"📄  {paper.get('title')}  ·  {paper.get('chunk_count')} chunks"):
@@ -367,14 +391,11 @@ if initiate_btn:
         st.session_state.executive_summary = None
         st.session_state.critique_analysis = None
         st.session_state.planner_roadmap   = None
-        st.session_state.fact_validation_results = None
         st.session_state.retrieved_memories = []   # RAG: store for UI display
         st.session_state.academic_papers = []      # Academic sources
         st.session_state.fallback_used = False     # Fallback flag
         st.session_state.retrieved_pdf_chunks = [] # PDF RAG chunks
         st.session_state.sources = []              # Standardized reference sources
-        st.session_state.bib_path = None           # Path to saved .bib file
-        st.session_state.selected_style = "IEEE"   # Default citation style
 
 if getattr(st.session_state, 'running', False):
     if not st.session_state.full_research:
@@ -393,7 +414,7 @@ if getattr(st.session_state, 'running', False):
                 "researcher_0": ICON_RESEARCHER,
                 "researcher_1": ICON_RESEARCHER,
                 "researcher_2": ICON_RESEARCHER,
-                "fact_validation": ICON_VERIFIED,
+                "draft_consolidation": ICON_SPARKLES,
                 "rag_enhancement": ICON_RAG,
                 "summarizer": ICON_SUMMARIZER,
                 "critic": ICON_CRITIC,
@@ -497,7 +518,7 @@ if getattr(st.session_state, 'running', False):
         researcher_0 = orchestrator.tasks["researcher_0"]
         researcher_1 = orchestrator.tasks["researcher_1"]
         researcher_2 = orchestrator.tasks["researcher_2"]
-        fact_val_task = orchestrator.tasks["fact_validation"]
+        draft_consolidation_task = orchestrator.tasks["draft_consolidation"]
         rag_task = orchestrator.tasks["rag_enhancement"]
         summarizer_task = orchestrator.tasks["summarizer"]
         critic_task = orchestrator.tasks["critic"]
@@ -510,7 +531,6 @@ if getattr(st.session_state, 'running', False):
         st.session_state.executive_summary = summarizer_task.result
         st.session_state.critique_analysis = critic_task.result
         st.session_state.optimized_data = self_corr_task.result
-        st.session_state.fact_validation_results = fact_val_task.result
         
         # Combine memories and chunks
         st.session_state.retrieved_memories = rag_task.result.get("memories", [])
@@ -558,16 +578,7 @@ if getattr(st.session_state, 'running', False):
         st.session_state.memory_saved = memory_task.result
         st.session_state.memory_error = None if memory_task.result else "Memory storage failed to archive."
 
-        # Generate citations BibTeX file
-        if st.session_state.sources:
-            try:
-                from tools.citation_manager import CitationManager
-                cm = CitationManager(st.session_state.sources)
-                database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database")
-                bib_dir = os.path.join(database_dir, "bib_files")
-                st.session_state.bib_path = cm.save_bibtex_file(st.session_state.topic, bib_dir)
-            except Exception as e:
-                print(f"Citation Generation Error: {e}")
+
 
         # Clear UI placeholders and rerun to draw final output
         workflow_ui.empty()
@@ -773,7 +784,7 @@ if getattr(st.session_state, 'running', False):
                                 </div>
                                 <p style='margin: 0; color: #a1a1aa; font-size: 0.95rem;'>
                                     The AI attempted to self-correct, but determined the original Draft v1 (Score: <strong>{opt_data['original_critique'].get('score')}</strong>) 
-                                    was superior to the refined Draft v2 (Score: <strong>{opt_data['final_critique'].get('score')}</strong>).<br>
+                                    was superior to the refined Draft v2 (Score: <strong>{opt_data['refined_critique'].get('score')}</strong>).<br>
                                     Safely retained original version.
                                 </p>
                             </div>
@@ -781,116 +792,7 @@ if getattr(st.session_state, 'running', False):
                             unsafe_allow_html=True
                         )
                 
-                # ── Fact Verification Panel ────────────────────────────────
-                fact_res = getattr(st.session_state, "fact_validation_results", None)
-                if fact_res and isinstance(fact_res, dict):
-                    trust_score = fact_res.get("trust_score", 100.0)
-                    halluc_score = fact_res.get("hallucination_score", 0.0)
-                    conf_label = fact_res.get("confidence_label", "High Trust")
-                    claims = fact_res.get("claims_validation", [])
-                    warnings = fact_res.get("warnings", [])
-                    
-                    if trust_score >= 85.0:
-                        banner_color = "linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(52, 211, 153, 0.03) 100%)"
-                        border_color = "#10b981"
-                        label_color = "#34d399"
-                    elif trust_score >= 60.0:
-                        banner_color = "linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 191, 36, 0.03) 100%)"
-                        border_color = "#f59e0b"
-                        label_color = "#fbbf24"
-                    else:
-                        banner_color = "linear-gradient(90deg, rgba(239, 68, 68, 0.12) 0%, rgba(248, 113, 113, 0.03) 100%)"
-                        border_color = "#ef4444"
-                        label_color = "#f87171"
-                        
-                    st.markdown(
-                        f"<h3 style='margin-top: 30px; margin-bottom: 12px; color: #10b981; "
-                        f"font-size: 1.3rem; display: flex; align-items: center; gap: 10px;'>"
-                        f"<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/></svg>"
-                        f" AI-Powered Fact Verification &amp; Hallucination Audit</h3>",
-                        unsafe_allow_html=True
-                    )
-                    
-                    st.markdown(
-                        f"""
-                        <div style='background: {banner_color}; border-left: 4px solid {border_color}; padding: 16px; border-radius: 8px; margin-bottom: 20px;'>
-                            <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;'>
-                                <div>
-                                    <h4 style='margin: 0; color: #ffffff; font-size: 1.02rem;'>Pipeline Trust Classification: <span style='color: {label_color};'>{conf_label}</span></h4>
-                                    <p style='margin: 4px 0 0 0; color: #a1a1aa; font-size: 0.88rem;'>
-                                        Every statement in the consolidated draft was cross-checked with all retrieved references.
-                                    </p>
-                                </div>
-                                <div style='display: flex; gap: 16px; align-items: center;'>
-                                    <div style='text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 8px 16px; border-radius: 8px;'>
-                                        <span style='font-size: 1.2rem; font-weight: 700; color: #34d399;'>{trust_score}%</span>
-                                        <div style='font-size: 0.65rem; color: #71717a; text-transform: uppercase; letter-spacing:0.05em;'>Trust Score</div>
-                                    </div>
-                                    <div style='text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 8px 16px; border-radius: 8px;'>
-                                        <span style='font-size: 1.2rem; font-weight: 700; color: {border_color};'>{halluc_score}%</span>
-                                        <div style='font-size: 0.65rem; color: #71717a; text-transform: uppercase; letter-spacing:0.05em;'>Hallucination</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    
-                    if warnings:
-                        st.markdown(
-                            f"<div style='background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;'>"
-                            f"<h5 style='margin: 0 0 10px 0; color: #fca5a5; display: flex; align-items: center; gap: 8px; font-size: 0.92rem;'>"
-                            f"<svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#fca5a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>"
-                            f" Hallucination Warnings Flagged ({len(warnings)})</h5>"
-                            + "".join([f"<div style='font-size: 0.82rem; color: #fca5a5; margin-bottom: 6px; padding-left: 20px; position: relative;'>• {w}</div>" for w in warnings]) +
-                            f"</div>",
-                            unsafe_allow_html=True
-                        )
-                        
-                    with st.expander(f"👁️ View Granular Claim Verification Breakdown ({len(claims)} statements audited)"):
-                        for c_idx, c in enumerate(claims, start=1):
-                            status = c.get("status", "Verified")
-                            claim_text = c.get("claim", "")
-                            explanation = c.get("explanation", "")
-                            source = c.get("source", "N/A")
-                            conf = c.get("confidence_score", 1.0)
-                            
-                            if status == "Verified":
-                                s_badge = "<span style='background:rgba(16,185,129,0.08);color:#34d399;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(16,185,129,0.18);'>Verified</span>"
-                                icon_color = "#34d399"
-                                icon_path = "<polyline points='20 6 9 17 4 12'></polyline>"
-                            elif status == "Partially Supported":
-                                s_badge = "<span style='background:rgba(245,158,11,0.08);color:#fbbf24;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(245,158,11,0.18);'>Partially Supported</span>"
-                                icon_color = "#fbbf24"
-                                icon_path = "<circle cx='12' cy='12' r='10'></circle><line x1='12' y1='8' x2='12' y2='12'></line><line x1='12' y1='16' x2='12.01' y2='16'></line>"
-                            else:
-                                s_badge = "<span style='background:rgba(239,68,68,0.08);color:#f87171;padding:2px 8px;border-radius:12px;font-size:0.72rem;font-weight:600;border:1px solid rgba(239,68,68,0.18);'>Unsupported</span>"
-                                icon_color = "#f87171"
-                                icon_path = "<line x1='18' y1='6' x2='6' y2='18'></line><line x1='6' y1='6' x2='18' y2='18'></line>"
-                                
-                            st.markdown(
-                                f"""
-                                <div style='padding: 12px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.02); border-radius: 6px;'>
-                                    <div style='display: flex; align-items: flex-start; gap: 10px;'>
-                                        <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='{icon_color}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='flex-shrink:0; margin-top:2px;'>{icon_path}</svg>
-                                        <div style='flex: 1;'>
-                                            <div style='display: flex; align-items: center; gap: 10px; flex-wrap: wrap;'>
-                                                <strong style='font-size: 0.85rem; color: #ffffff;'>Claim {c_idx}</strong>
-                                                {s_badge}
-                                                <span style='font-size: 0.72rem; color: #71717a;'>Confidence: {conf*100:.0f}%</span>
-                                            </div>
-                                            <p style='margin: 6px 0; font-size: 0.85rem; color: #e4e4e7;'>"{claim_text}"</p>
-                                            <div style='font-size: 0.78rem; color: #a1a1aa; margin-top: 4px;'>
-                                                <strong>Source Reference:</strong> <code style='font-family: monospace; background: rgba(255,255,255,0.03); padding: 1px 5px; border-radius: 3px; color: #e4e4e7;'>{source}</code>
-                                            </div>
-                                            <p style='margin: 4px 0 0 0; font-size: 0.78rem; color: #71717a;'><em>Reasoning:</em> {explanation}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+
                 
                 # ── RAG Memory Panel ──────────────────────────────────────
                 retrieved_mems = getattr(st.session_state, "retrieved_memories", [])
@@ -916,17 +818,21 @@ if getattr(st.session_state, 'running', False):
                             f"""
                             <div style='background: rgba(52, 211, 153, 0.04); border: 1px dashed rgba(52, 211, 153, 0.25);
                                         border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;'>
-                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
-                                    ⚡ <strong>RAG Search Latency:</strong> {analytics.get('latency_ms', 0)}ms
+                                <div style='font-size: 0.85rem; color: #a1a1aa; display: flex; align-items: center; gap: 6px;'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                    <span><strong>RAG Search Latency:</strong> {analytics.get('latency_ms', 0)}ms</span>
                                 </div>
-                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
-                                    🔍 <strong>Scanned Candidates:</strong> {analytics.get('scanned_candidates', 0)}
+                                <div style='font-size: 0.85rem; color: #a1a1aa; display: flex; align-items: center; gap: 6px;'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                    <span><strong>Scanned Candidates:</strong> {analytics.get('scanned_candidates', 0)}</span>
                                 </div>
-                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
-                                    ✂️ <strong>Deduplicated &amp; Merged:</strong> {analytics.get('deduplicated_count', 0)}
+                                <div style='font-size: 0.85rem; color: #a1a1aa; display: flex; align-items: center; gap: 6px;'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="9.8" y1="8.2" x2="20" y2="17"/><line x1="9.8" y1="15.8" x2="20" y2="7"/></svg>
+                                    <span><strong>Deduplicated &amp; Merged:</strong> {analytics.get('deduplicated_count', 0)}</span>
                                 </div>
-                                <div style='font-size: 0.85rem; color: #a1a1aa;'>
-                                    🏆 <strong>Max Source Confidence:</strong> {analytics.get('top_confidence', '0%')}
+                                <div style='font-size: 0.85rem; color: #a1a1aa; display: flex; align-items: center; gap: 6px;'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/><path d="M12 2a6 6 0 0 1 6 6v1a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6Z"/></svg>
+                                    <span><strong>Max Source Confidence:</strong> {analytics.get('top_confidence', '0%')}</span>
                                 </div>
                             </div>
                             """,
@@ -1229,20 +1135,19 @@ if getattr(st.session_state, 'running', False):
                 # ── Executive Summary ────────────────────────────────────
                 st.markdown(
                     f"""
-                    <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
-                                background: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.06) 100%);
-                                border-left: 5px solid #6366f1; border-radius: 12px;'>
-                        <div style='display:flex; align-items:center; gap:14px;'>
-                            <span style='color:#818cf8; flex-shrink:0;'>{ICON_SUMMARIZER}</span>
-                            <div>
-                                <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
-                                          text-transform:uppercase; color:#818cf8;'>Section 1</p>
-                                <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
-                                           background: linear-gradient(90deg, #818cf8, #c084fc);
-                                           -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
-                                    Executive Summary
-                                </h2>
-                            </div>
+                    <div style='margin-top:40px; margin-bottom:24px; padding:24px;
+                                background: linear-gradient(135deg, #121214 0%, rgba(129, 140, 248, 0.04) 100%);
+                                border: 1px solid rgba(129, 140, 248, 0.25);
+                                border-left: 5px solid #818cf8;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(129, 140, 248, 0.15);'>
+                        <p style='margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+                                  text-transform: uppercase; color: #818cf8;'>Section 1</p>
+                        <div style='display: flex; align-items: center; gap: 10px; color: #818cf8;'>
+                            {ICON_SUMMARIZER}
+                            <h2 style='margin: 0; font-size: 1.8rem; font-weight: 800; color: #818cf8 !important; line-height: 1.2;'>
+                                Executive Summary
+                            </h2>
                         </div>
                     </div>
                     """,
@@ -1254,20 +1159,19 @@ if getattr(st.session_state, 'running', False):
                 # ── AI Critic Analysis ───────────────────────────────────
                 st.markdown(
                     f"""
-                    <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
-                                background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(249,115,22,0.06) 100%);
-                                border-left: 5px solid #f59e0b; border-radius: 12px;'>
-                        <div style='display:flex; align-items:center; gap:14px;'>
-                            <span style='color:#fbbf24; flex-shrink:0;'>{ICON_CRITIC}</span>
-                            <div>
-                                <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
-                                          text-transform:uppercase; color:#fbbf24;'>Section 2</p>
-                                <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
-                                           background: linear-gradient(90deg, #fbbf24, #f97316);
-                                           -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
-                                    AI Critic Analysis
-                                </h2>
-                            </div>
+                    <div style='margin-top:40px; margin-bottom:24px; padding:24px;
+                                background: linear-gradient(135deg, #121214 0%, rgba(251, 191, 36, 0.04) 100%);
+                                border: 1px solid rgba(251, 191, 36, 0.25);
+                                border-left: 5px solid #fbbf24;
+                                border-radius: 12px;
+                                box-shadow: 0 8px 32px rgba(251, 191, 36, 0.15);'>
+                        <p style='margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+                                  text-transform: uppercase; color: #fbbf24;'>Section 2</p>
+                        <div style='display: flex; align-items: center; gap: 10px; color: #fbbf24;'>
+                            {ICON_CRITIC}
+                            <h2 style='margin: 0; font-size: 1.8rem; font-weight: 800; color: #fbbf24 !important; line-height: 1.2;'>
+                                AI Critic Analysis
+                            </h2>
                         </div>
                     </div>
                     """,
@@ -1283,6 +1187,29 @@ if getattr(st.session_state, 'running', False):
 
                 with st.container():
                     st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # Lucide icon header for Full Report
+                    st.markdown(
+                        f"""
+                        <div style='margin-top:40px; margin-bottom:24px; padding:24px;
+                                    background: linear-gradient(135deg, #121214 0%, rgba(52, 211, 153, 0.04) 100%);
+                                    border: 1px solid rgba(52, 211, 153, 0.25);
+                                    border-left: 5px solid #34d399;
+                                    border-radius: 12px;
+                                    box-shadow: 0 8px 32px rgba(52, 211, 153, 0.15);'>
+                            <p style='margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em;
+                                      text-transform: uppercase; color: #34d399;'>Section 3</p>
+                            <div style='display: flex; align-items: center; gap: 10px; color: #34d399;'>
+                                <svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>
+                                <h2 style='margin: 0; font-size: 1.8rem; font-weight: 800; color: #34d399 !important; line-height: 1.2;'>
+                                    Full Comprehensive Research Report
+                                </h2>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
                     opt_data = getattr(st.session_state, "optimized_data", None)
                     if opt_data and opt_data.get("optimized"):
                         # Lucide icon header for Draft v1
@@ -1308,137 +1235,16 @@ if getattr(st.session_state, 'running', False):
                         )
                         with st.expander("View Draft v2 — Optimized", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            report_styled = format_report_with_style(
-                                st.session_state.full_research,
-                                getattr(st.session_state, "sources", []),
-                                getattr(st.session_state, "selected_style", "IEEE")
-                            )
-                            st.markdown(strip_fake_links(report_styled))
+                            st.markdown(strip_fake_links(st.session_state.full_research))
                             st.markdown('</div>', unsafe_allow_html=True)
                     else:
-                        # Lucide icon header for Full Report
-                        st.markdown(
-                            f"""
-                            <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
-                                        background: linear-gradient(135deg, rgba(52,211,153,0.12) 0%, rgba(6,182,212,0.06) 100%);
-                                        border-left: 5px solid #34d399; border-radius: 12px;'>
-                                <div style='display:flex; align-items:center; gap:14px;'>
-                                    <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#34d399' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>
-                                    <div>
-                                        <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
-                                                  text-transform:uppercase; color:#34d399;'>Section 3</p>
-                                        <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
-                                                   background: linear-gradient(90deg, #34d399, #06b6d4);
-                                                   -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
-                                            Full Comprehensive Research Report
-                                        </h2>
-                                    </div>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
                         with st.expander("View Full Report", expanded=True):
                             st.markdown('<div style="padding: 10px;">', unsafe_allow_html=True)
-                            report_styled = format_report_with_style(
-                                st.session_state.full_research,
-                                getattr(st.session_state, "sources", []),
-                                getattr(st.session_state, "selected_style", "IEEE")
-                            )
-                            st.markdown(strip_fake_links(report_styled))
+                            st.markdown(strip_fake_links(st.session_state.full_research))
                             st.markdown('</div>', unsafe_allow_html=True)
 
-                # ── Citations & Bibliography Section ─────────────────────────────
-                if getattr(st.session_state, "sources", []):
                     st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown(
-                        f"""
-                        <div style='margin-top:40px; margin-bottom:20px; padding:20px 24px;
-                                    background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(239,68,68,0.06) 100%);
-                                    border-left: 5px solid #f59e0b; border-radius: 12px;'>
-                            <div style='display:flex; align-items:center; gap:14px;'>
-                                <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z'/><path d='M6 6h10'/><path d='M6 10h10'/><path d='M6 14h10'/><path d='M6 18h10'/></svg>
-                                <div>
-                                    <p style='margin:0; font-size:0.75rem; font-weight:700; letter-spacing:0.12em;
-                                              text-transform:uppercase; color:#f59e0b;'>Section 4</p>
-                                    <h2 style='margin:4px 0 0 0; font-size:2rem; font-weight:800; line-height:1.1;
-                                               background: linear-gradient(90deg, #f59e0b, #ef4444);
-                                               -webkit-background-clip:text; -webkit-text-fill-color:transparent;'>
-                                        Citations & Bibliography Library
-                                    </h2>
-                                </div>
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    
-                    with st.container():
-                        # Style Selector & Downloads Layout
-                        col_select, col_actions = st.columns([1, 1])
-                        with col_select:
-                            selected_style = st.selectbox(
-                                "Select Bibliography Citation Style:",
-                                options=["IEEE", "APA", "MLA"],
-                                index=["IEEE", "APA", "MLA"].index(getattr(st.session_state, "selected_style", "IEEE")),
-                                key="selected_style_selector"
-                            )
-                            st.session_state.selected_style = selected_style
-                            
-                        with col_actions:
-                            from tools.citation_manager import CitationManager
-                            cm = CitationManager(st.session_state.sources)
-                            bib_content = cm.generate_bibtex_file_content()
-                            report_styled = format_report_with_style(
-                                st.session_state.full_research,
-                                st.session_state.sources,
-                                selected_style
-                            )
-                            
-                            st.markdown("<p style='margin:0; font-size:0.85rem; font-weight:700; color:#a1a1aa;'>Export Resources:</p>", unsafe_allow_html=True)
-                            col_btn1, col_btn2 = st.columns([1, 1])
-                            with col_btn1:
-                                st.download_button(
-                                    label="📥 Download .bib",
-                                    data=bib_content,
-                                    file_name=f"{st.session_state.topic.replace(' ', '_')}.bib",
-                                    mime="text/plain",
-                                    key="download_bib_btn_ui",
-                                    use_container_width=True
-                                )
-                            with col_btn2:
-                                st.download_button(
-                                    label="📥 Download Report .md",
-                                    data=report_styled,
-                                    file_name=f"Research_Report_{st.session_state.topic.replace(' ', '_')}.md",
-                                    mime="text/markdown",
-                                    key="download_md_report_btn_ui",
-                                    use_container_width=True
-                                )
-
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        
-                        # Show individual citation records
-                        st.markdown("<h3 style='color:#ffffff; font-size:1.2rem; margin-bottom:12px;'>Individual Source Records</h3>", unsafe_allow_html=True)
-                        for idx, s in enumerate(cm.sources, start=1):
-                            type_icon = "📄" if s["type"] == "pdf" else ("🌐" if s["type"] == "web" else "📚")
-                            with st.expander(f"{type_icon}  Source {idx}: {s['title'][:70]}{'...' if len(s['title']) > 70 else ''}"):
-                                # Render style options
-                                st.markdown(f"**APA 7th:**")
-                                st.markdown(f"> {cm.get_apa_citation(s)}")
-                                
-                                st.markdown(f"**IEEE:**")
-                                st.markdown(f"> {cm.get_ieee_citation(s)}")
-                                
-                                st.markdown(f"**MLA 9th:**")
-                                st.markdown(f"> {cm.get_mla_citation(s)}")
-                                
-                                st.markdown(f"**BibTeX Entry:**")
-                                st.code(cm.get_bibtex_citation(s), language="latex")
-                                
-                        # Show compiled BibTeX tab
-                        with st.expander("📝 View Full Compiled BibTeX File"):
-                            st.code(bib_content, language="latex")
+                    render_download_buttons_fragment(st.session_state.full_research, st.session_state.topic)
 
 
 

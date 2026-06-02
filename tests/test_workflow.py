@@ -50,23 +50,7 @@ MOCK_CRITIQUE = {
 # Mock report generator result
 MOCK_REPORT = "# Consolidated Research Report\n\n## Executive Summary\nDistilled summary.\n\n## Body\nValidated research report body."
 
-# Mock fact validator result
-MOCK_VALIDATION_RESULT = {
-    "validated_text": MOCK_VALIDATION,
-    "trust_score": 100.0,
-    "hallucination_score": 0.0,
-    "confidence_label": "High Trust",
-    "claims_validation": [
-        {
-            "claim": "Quantum algorithms run on qubits.",
-            "status": "Verified",
-            "source": "Quantum benchmarks",
-            "confidence_score": 1.0,
-            "explanation": "Verified in abstract."
-        }
-    ],
-    "warnings": []
-}
+
 
 async def test_orchestrator_successful_dag_execution():
     """
@@ -75,8 +59,7 @@ async def test_orchestrator_successful_dag_execution():
     """
     with patch("orchestrators.agent_orchestrator.generate_plan", return_value=MOCK_PLAN), \
          patch("orchestrators.agent_orchestrator.generate_research", return_value=MOCK_RESEARCH), \
-         patch("orchestrators.agent_orchestrator.validate_research_facts", return_value=MOCK_VALIDATION), \
-         patch("agents.fact_validator_agent.validate_report_with_sources", return_value=MOCK_VALIDATION_RESULT), \
+         patch("orchestrators.agent_orchestrator.consolidate_research_drafts", return_value=MOCK_VALIDATION), \
          patch("orchestrators.agent_orchestrator.summarize_research", return_value=MOCK_SUMMARY), \
          patch("orchestrators.agent_orchestrator.critique_research", return_value=MOCK_CRITIQUE), \
          patch("orchestrators.agent_orchestrator.generate_final_report", return_value=MOCK_REPORT), \
@@ -95,7 +78,7 @@ async def test_orchestrator_successful_dag_execution():
         assert orchestrator.tasks["researcher_0"].status == "COMPLETED"
         assert orchestrator.tasks["researcher_1"].status == "COMPLETED"
         assert orchestrator.tasks["researcher_2"].status == "COMPLETED"
-        assert orchestrator.tasks["fact_validation"].status == "COMPLETED"
+        assert orchestrator.tasks["draft_consolidation"].status == "COMPLETED"
         assert orchestrator.tasks["rag_enhancement"].status == "COMPLETED"
         assert orchestrator.tasks["summarizer"].status == "COMPLETED"
         assert orchestrator.tasks["critic"].status == "COMPLETED"
@@ -116,8 +99,7 @@ async def test_orchestrator_self_correction_trigger():
     
     with patch("orchestrators.agent_orchestrator.generate_plan", return_value=MOCK_PLAN), \
          patch("orchestrators.agent_orchestrator.generate_research", return_value=MOCK_RESEARCH), \
-         patch("orchestrators.agent_orchestrator.validate_research_facts", return_value=MOCK_VALIDATION), \
-         patch("agents.fact_validator_agent.validate_report_with_sources", return_value=MOCK_VALIDATION_RESULT), \
+         patch("orchestrators.agent_orchestrator.consolidate_research_drafts", return_value=MOCK_VALIDATION), \
          patch("orchestrators.agent_orchestrator.summarize_research", return_value=MOCK_SUMMARY), \
          patch("orchestrators.agent_orchestrator.critique_research", side_effect=[low_critique, MOCK_CRITIQUE]), \
          patch("orchestrators.agent_orchestrator.refine_research", return_value="Refined validated report body."), \

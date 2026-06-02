@@ -93,8 +93,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach to predict molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations from graph-structured data. The key contribution of this work is the application of GCN to predict molecular toxicity with high accuracy. By leveraging the capabilities of GCN, this approach aims to improve upon traditional methods and provide a more efficient and effective way to predict molecular properties, ultimately accelerating the drug discovery process. The paper highlights the potential of graph neural networks in molecular property prediction, offering a promising solution for the pharmaceutical industry.",
-        "timestamp": "2026-05-30T14:21:41.598683",
+        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, thereby reducing costs. The methodology employs GCN, a type of graph neural network, to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging the structural information of molecules, GCN can learn complex relationships between molecular structure and properties, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a valuable tool for the pharmaceutical industry and beyond.",
+        "timestamp": "2026-06-02T17:24:00.189919",
         "workspace": "default"
     }
 ]
