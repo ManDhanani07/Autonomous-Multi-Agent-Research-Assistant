@@ -11,11 +11,64 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 import streamlit as st
 import os
 import sys
+import re
+import json
+import ast
 from datetime import datetime
 import importlib
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+def parse_memory_document(doc_text):
+    sections = {}
+    
+    # Locate section headers
+    summary_idx = doc_text.find("SUMMARY:\n")
+    critique_idx = doc_text.find("CRITIQUE:\n")
+    research_idx = doc_text.find("FULL RESEARCH:\n")
+    
+    if summary_idx != -1 and critique_idx != -1 and research_idx != -1:
+        sections['topic'] = doc_text[:summary_idx].replace("TOPIC:", "").strip()
+        sections['summary'] = doc_text[summary_idx:critique_idx].replace("SUMMARY:\n", "").strip()
+        sections['critique'] = doc_text[critique_idx:research_idx].replace("CRITIQUE:\n", "").strip()
+        sections['full_research'] = doc_text[research_idx:].replace("FULL RESEARCH:\n", "").strip()
+    else:
+        # Fallback if the markers are not present
+        sections['raw'] = doc_text
+        
+    return sections
+
+def parse_critique_dict(critique_str):
+    critique_str = critique_str.strip()
+    # Try parsing string representation of Python dict
+    try:
+        return ast.literal_eval(critique_str)
+    except Exception:
+        pass
+    
+    # Try parsing JSON
+    try:
+        return json.loads(critique_str)
+    except Exception:
+        pass
+        
+    # Search for json/dict block in case of wrapping or extra text
+    try:
+        match = re.search(r'\{.*\}', critique_str, re.DOTALL)
+        if match:
+            return ast.literal_eval(match.group(0))
+    except Exception:
+        pass
+        
+    try:
+        match = re.search(r'\{.*\}', critique_str, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+    except Exception:
+        pass
+        
+    return None
 
 from memory.chroma_store import get_all_memories
 from frontend.shared_theme import apply_shared_theme
@@ -56,6 +109,25 @@ try:
         </div>
         """, unsafe_allow_html=True)
     else:
+        st.markdown("""
+        <style>
+        /* Reset global tab styles for the memory bank page to use clean emojis instead */
+        div[data-testid="stTabBar"] button[role="tab"] p::before,
+        div[data-testid="stTabBar"] button[role="tab"] span::before,
+        div[data-testid="stTabs"] button[role="tab"] p::before,
+        div[data-testid="stTabs"] button[role="tab"] span::before {
+            display: none !important;
+            content: none !important;
+            background-image: none !important;
+        }
+        div[data-testid="stTabBar"] button[role="tab"] p,
+        div[data-testid="stTabBar"] button[role="tab"] span,
+        div[data-testid="stTabs"] button[role="tab"] p,
+        div[data-testid="stTabs"] button[role="tab"] span {
+            padding-left: 0px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         st.markdown(f"<p style='color: #34d399; font-weight: 600; margin-bottom: 20px;'>{len(memories)} Encoded Memories Found</p>", unsafe_allow_html=True)
         
         for mem in memories:
@@ -112,8 +184,85 @@ try:
                     unsafe_allow_html=True
                 )
                 
-                # The document contains the combined Summary, Critic, and Full Research from the memory_manager
-                st.markdown(mem['document'])
+                # Parse the combined document
+                sections = parse_memory_document(mem['document'])
+                
+                if 'raw' in sections:
+                    # Fallback if we couldn't parse the expected structure
+                    st.markdown(sections['raw'])
+                else:
+                    # Render structured tabs
+                    tab_sum, tab_crit, tab_res = st.tabs([
+                        "📝 Executive Summary",
+                        "🧐 Critic Analysis",
+                        "🔬 Full Research Report"
+                    ])
+                    
+                    with tab_sum:
+                        st.markdown(sections['summary'])
+                        
+                    with tab_crit:
+                        crit_data = parse_critique_dict(sections['critique'])
+                        if crit_data and isinstance(crit_data, dict):
+                            # Beautiful custom HTML/CSS for critique
+                            score = crit_data.get('score', 'N/A')
+                            
+                            # Score badge/metric
+                            st.markdown(f"""
+                            <div style='display: flex; align-items: center; justify-content: space-between; background: rgba(239, 68, 68, 0.08); padding: 16px 24px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.15); margin-bottom: 20px;'>
+                                <div style='display: flex; align-items: center; gap: 12px;'>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    <span style='font-size: 1.1rem; font-weight: 600; color: #ffffff;'>Critic Quality Assessment Score</span>
+                                </div>
+                                <div style='font-size: 1.8rem; font-weight: 700; color: #ef4444;'>{score} <span style='font-size: 1rem; color: #a1a1aa;'>/ 10</span></div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Strengths and Weaknesses side by side
+                            col_str, col_weak = st.columns(2)
+                            
+                            with col_str:
+                                st.markdown("<p style='font-weight:600; color:#10b981; font-size:1.1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
+                                strengths = crit_data.get('strengths', [])
+                                if strengths:
+                                    for s in strengths:
+                                        st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
+                                else:
+                                    st.write("None identified.")
+                                    
+                            with col_weak:
+                                st.markdown("<p style='font-weight:600; color:#ef4444; font-size:1.1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
+                                weaknesses = crit_data.get('weaknesses', [])
+                                if weaknesses:
+                                    for w in weaknesses:
+                                        st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
+                                else:
+                                    st.write("None identified.")
+                            
+                            # Missing topics
+                            missing = crit_data.get('missing_topics', [])
+                            if missing:
+                                st.markdown("<p style='font-weight:600; color:#f59e0b; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg> Missing Topics & Gaps</p>", unsafe_allow_html=True)
+                                for m in missing:
+                                    st.markdown(f"<div style='background:rgba(245, 158, 11, 0.04); border-left:3px solid #f59e0b; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{m}</div>", unsafe_allow_html=True)
+                            
+                            # Suggestions
+                            suggestions = crit_data.get('improvement_suggestions', [])
+                            if suggestions:
+                                st.markdown("<p style='font-weight:600; color:#3b82f6; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Suggestions</p>", unsafe_allow_html=True)
+                                for su in suggestions:
+                                    st.markdown(f"<div style='background:rgba(59, 130, 246, 0.04); border-left:3px solid #3b82f6; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{su}</div>", unsafe_allow_html=True)
+                            
+                            # Clarity
+                            clarity = crit_data.get('clarity_evaluation', '')
+                            if clarity:
+                                st.markdown("<p style='font-weight:600; color:#ec4899; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ec4899' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg> Clarity & Tone Evaluation</p>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='background:rgba(236, 72, 153, 0.04); border-left:3px solid #ec4899; padding:12px; border-radius:4px; color:#d4d4d8; font-size:0.95rem; line-height:1.6;'>{clarity}</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown(sections['critique'])
+                            
+                    with tab_res:
+                        st.markdown(sections['full_research'])
 
 except Exception as e:
     st.error("Failed to connect to ChromaDB Vector Store. Ensure dependencies are installed and the database isn't locked.")

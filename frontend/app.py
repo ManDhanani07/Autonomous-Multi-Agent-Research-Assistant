@@ -13,10 +13,11 @@ import os
 import sys
 
 # Force reload local custom modules to prevent Streamlit caching stale backend changes
+# NOTE: 'tools' is NOT cleared here because tools.groq_client holds shared state
+# (API key rotation, rate-limit lock) that must persist across reruns.
 for module_name in list(sys.modules.keys()):
     if (module_name.startswith("orchestrators") or 
         module_name.startswith("agents") or 
-        module_name.startswith("tools") or 
         module_name.startswith("memory")):
         del sys.modules[module_name]
 

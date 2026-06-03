@@ -93,8 +93,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, thereby reducing costs. The methodology employs GCN, a type of graph neural network, to learn molecular representations and predict toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging the structural information of molecules, GCN can learn complex relationships between molecular structure and properties, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a valuable tool for the pharmaceutical industry and beyond.",
-        "timestamp": "2026-06-02T17:24:00.189919",
+        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs. The methodology involves utilizing GCN to learn molecular representations from graph-structured data. The key contribution of this work is the application of GCN to predict molecular toxicity with high accuracy. By leveraging graph neural networks, this approach aims to improve upon traditional methods, providing a more efficient and effective means of molecular property prediction. The paper's focus on GCN-based molecular property prediction has the potential to significantly impact the drug discovery process, enabling faster and more cost-effective development of new compounds.",
+        "timestamp": "2026-06-03T10:42:04.486094",
         "workspace": "default"
     }
 ]
