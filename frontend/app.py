@@ -13,13 +13,15 @@ import os
 import sys
 
 # Force reload local custom modules to prevent Streamlit caching stale backend changes
-# NOTE: 'tools' is NOT cleared here because tools.groq_client holds shared state
-# (API key rotation, rate-limit lock) that must persist across reruns.
-for module_name in list(sys.modules.keys()):
-    if (module_name.startswith("orchestrators") or 
-        module_name.startswith("agents") or 
-        module_name.startswith("memory")):
-        del sys.modules[module_name]
+# NOTE: We only clear the cache when the pipeline is NOT currently running.
+# Clearing sys.modules during an active background run causes a race condition and KeyError.
+# 'tools' is NOT cleared here because tools.groq_client holds shared state.
+if not st.session_state.get("running", False):
+    for module_name in list(sys.modules.keys()):
+        if (module_name.startswith("orchestrators") or 
+            module_name.startswith("agents") or 
+            module_name.startswith("memory")):
+            del sys.modules[module_name]
 
 import time
 import json

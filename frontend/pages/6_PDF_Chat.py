@@ -1,6 +1,10 @@
 import os
+import sys
 import json
 import streamlit as st
+
+# Add project root to python path to allow importing backend modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from frontend.shared_theme import apply_shared_theme
 from memory.chroma_store import list_workspaces
@@ -46,8 +50,6 @@ def reset_chat():
     st.session_state.pdf_chat_history = []
     st.session_state.pdf_chat_latest_context = ""
     st.session_state.pdf_chat_latest_chunks = []
-
-
 def build_prompt(question: str, retrieved_context: str, action: str | None = None) -> str:
     action_instructions = ""
     if action == "explain":
@@ -58,6 +60,8 @@ def build_prompt(question: str, retrieved_context: str, action: str | None = Non
         action_instructions = "Generate 5 short flashcards with questions and answers based on the retrieved PDF context."
     elif action == "interview":
         action_instructions = "Generate 5 interview-style questions and answers based on the retrieved PDF context."
+    elif action == "summary":
+        action_instructions = "Create a comprehensive summary of the retrieved PDF context, detailing all key findings, objectives, methodology, and conclusions."
 
     instructions = (
         "You are an expert PDF research assistant. Use only the retrieved PDF chunks below to answer the user query. "
@@ -140,16 +144,72 @@ def main():
         index=workspaces.index(st.session_state.pdf_chat_workspace) if st.session_state.pdf_chat_workspace in workspaces else 0
     )
     st.session_state.pdf_chat_workspace = workspace
-
     pdfs = load_pdf_metadata(workspace)
     pdf_options = [pdf.get("filename", "Unnamed PDF") for pdf in pdfs]
 
     if pdf_options:
-        selected_pdf = st.selectbox("Select an uploaded PDF", pdf_options, index=pdf_options.index(st.session_state.pdf_chat_selected_pdf) if st.session_state.pdf_chat_selected_pdf in pdf_options else 0)
-        st.session_state.pdf_chat_selected_pdf = selected_pdf
+        col_select, col_dl = st.columns([3, 1])
+        with col_select:
+            selected_pdf = st.selectbox(
+                "Select an uploaded PDF",
+                pdf_options,
+                index=pdf_options.index(st.session_state.pdf_chat_selected_pdf) if st.session_state.pdf_chat_selected_pdf in pdf_options else 0
+            )
+            st.session_state.pdf_chat_selected_pdf = selected_pdf
+            
+        with col_dl:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "database")
+            pdf_file_path = os.path.join(database_dir, "uploaded_pdfs", selected_pdf)
+            if os.path.exists(pdf_file_path):
+                try:
+                    with open(pdf_file_path, "rb") as f:
+                        pdf_bytes = f.read()
+                    st.download_button(
+                        label="📥 Download PDF",
+                        data=pdf_bytes,
+                        file_name=selected_pdf,
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                except Exception:
+                    st.error("Error reading PDF")
+            else:
+                st.error("File not found")
     else:
         selected_pdf = None
-        st.warning("No uploaded PDFs found in this workspace. Upload a PDF from the Document Library tab first.")
+    # Check if selected PDF chunks are indexed in ChromaDB
+    db_chunk_count = 0
+    if selected_pdf:
+        try:
+            from memory.chroma_store import get_chroma_client, get_collection_name_for_workspace
+            client = get_chroma_client()
+            collection_name = get_collection_name_for_workspace(workspace, suffix="_pdfs")
+            collection = client.get_collection(name=collection_name)
+            results = collection.get(where={"source_file": selected_pdf}, include=[])
+            db_chunk_count = len(results.get("ids", []))
+        except Exception:
+            db_chunk_count = 0
+
+    if selected_pdf and db_chunk_count == 0:
+        st.warning(f"⚠️ The document '{selected_pdf}' is not indexed in the active workspace '{workspace}' vector database.")
+        database_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "database")
+        pdf_file_path = os.path.join(database_dir, "uploaded_pdfs", selected_pdf)
+        
+        if os.path.exists(pdf_file_path):
+            if st.button("🔄 Index Document Chunks", key="index_pdf_now"):
+                with st.spinner(f"Parsing and indexing '{selected_pdf}'..."):
+                    try:
+                        from tools.pdf_parser_tool import ingest_pdf_to_chroma
+                        ingest_pdf_to_chroma(pdf_file_path, filename=selected_pdf, workspace=workspace)
+                        st.success(f"Successfully indexed '{selected_pdf}' in database!")
+                        import time
+                        time.sleep(1.0)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to index PDF: {e}")
+        else:
+            st.error("The source PDF file was not found on disk. Please upload it again on the Home page.")
 
     st.markdown("---")
 
@@ -159,7 +219,7 @@ def main():
             reset_chat()
         st.markdown("<div style='margin-top: 12px; color: #a1a1aa;'>Your PDF chat history is stored only for this session.</div>", unsafe_allow_html=True)
     with col2:
-        action_cols = st.columns(4)
+        action_cols = st.columns(5)
         if action_cols[0].button("Explain Simply", key="pdf_chat_explain"):
             st.session_state.pdf_chat_action = "explain"
         if action_cols[1].button("Generate Notes", key="pdf_chat_notes"):
@@ -168,10 +228,11 @@ def main():
             st.session_state.pdf_chat_action = "flashcards"
         if action_cols[3].button("Generate Interview Questions", key="pdf_chat_interview"):
             st.session_state.pdf_chat_action = "interview"
+        if action_cols[4].button("Generate Summary", key="pdf_chat_summary"):
+            st.session_state.pdf_chat_action = "summary"
 
     if not selected_pdf:
         return
-
     if "last_user_message" not in st.session_state:
         st.session_state.last_user_message = ""
 
@@ -195,13 +256,11 @@ def main():
         add_chat_message("user", query)
         st.session_state.last_user_message = query
 
+        metadata_filter = {"source_file": selected_pdf}
         with st.spinner("Retrieving relevant PDF chunks..."):
-            _, chunks = search_pdf_context(query, n_results=8, min_similarity=0.20, workspace=workspace)
+            _, chunks = search_pdf_context(query, n_results=8, min_similarity=0.20, workspace=workspace, metadata_filter=metadata_filter)
 
-        filtered_chunks = [
-            chunk for chunk in chunks
-            if chunk.get("metadata", {}).get("source_file") == selected_pdf
-        ]
+        filtered_chunks = chunks
 
         if not filtered_chunks:
             add_chat_message("assistant", "I couldn't find relevant content in the selected PDF. Try another question or choose a different PDF.")
@@ -225,12 +284,24 @@ def main():
     quick_action = st.session_state.get("pdf_chat_action")
     if quick_action:
         st.session_state.pdf_chat_action = None
-        if not st.session_state.last_user_message:
-            st.warning("Ask a question first before using quick actions.")
-        elif not st.session_state.pdf_chat_latest_context:
-            st.warning("No retrieved PDF context available yet. Ask a question first.")
+        # Determine appropriate semantic query for retrieval based on action
+        if st.session_state.last_user_message:
+            query = st.session_state.last_user_message
         else:
-            run_retrieval_and_answer(st.session_state.last_user_message, action=quick_action)
+            if quick_action == "summary":
+                query = "executive summary abstract introduction methodology main findings conclusions"
+            elif quick_action == "explain":
+                query = "introduction overview fundamentals summary"
+            elif quick_action == "notes":
+                query = "key concepts methodology results main contributions summary"
+            elif quick_action == "flashcards":
+                query = "important terminology definitions key facts summary"
+            elif quick_action == "interview":
+                query = "core questions concepts definitions findings methodology summary"
+            else:
+                query = "document overview summary main points"
+        
+        run_retrieval_and_answer(query, action=quick_action)
 
     with st.chat_message("system"):
         st.markdown("**PDF Chat is using the selected PDF and retrieved chunks only. Answers are generated from the current PDF context.**")

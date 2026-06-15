@@ -16,6 +16,19 @@
         "timestamp": "2026-05-29T14:15:53.403711"
     },
     {
+        "filename": "opticsbook.pdf",
+        "title": "Physics of Light and Optics",
+        "chunk_count": 835,
+        "sections": [
+            "Header/Title"
+        ],
+        "table_count": 21,
+        "reference_count": 0,
+        "summary": "No Abstract or Introduction content available to summarize.",
+        "timestamp": "2026-05-30T12:00:11.847477",
+        "workspace": "physics_project"
+    },
+    {
         "filename": "Enhancing_Biology_Laboratory_Learning_Student_Perceptions_of_Performing_Heart_Dissection_With_Virtual_Reality.pdf",
         "title": "Enhancing Biology Laboratory Learning: Student Perceptions of Performing Heart Dissection With Virtual Reality",
         "chunk_count": 42,
@@ -28,8 +41,8 @@
         ],
         "table_count": 0,
         "reference_count": 34,
-        "summary": "This study investigates the effectiveness of using Virtual Reality (VR) technology, specifically the Oculus Quest 2, to enhance biology laboratory learning. The research focuses on student perceptions of performing a virtual heart dissection in a mid-sized biology classroom setting. A total of 23 students from a Singaporean secondary school participated in the study. The core objective is to assess the potential of VR technology in augmenting traditional in-person laboratory settings and evaluating its feasibility as a replacement. The study's key contributions include insights into the effectiveness of VR in stimulating student interest and engagement, and its potential to transform the traditional learning experience in biology. The findings have important implications for the future of educational methodologies in science and technology subjects, offering a more interactive and engaging approach to education in biology.",
-        "timestamp": "2026-05-29T17:46:33.287869",
+        "summary": "This study investigates the effectiveness of Virtual Reality (VR) technology, specifically the Oculus Quest 2, in enhancing biology laboratory learning. The core objective is to assess the potential of VR in stimulating student interest and understanding of biology concepts, particularly heart dissection. The methodology involves engaging 23 secondary school students in a VR-based instructional class. The study evaluates the feasibility of replacing traditional laboratory settings with VR-based learning environments. Key contributions include insights into the effectiveness of VR in enhancing academic engagement and understanding of biology concepts, as well as its potential to transform the traditional learning experience into a more interactive and engaging approach. The findings reveal that VR can significantly stimulate student interest in biology, with important implications for the future of educational methodologies in science and technology subjects.",
+        "timestamp": "2026-06-15T13:35:13.455754",
         "workspace": "default"
     },
     {
@@ -42,23 +55,10 @@
             "Conclusion",
             "References"
         ],
-        "table_count": 4,
+        "table_count": 0,
         "reference_count": 117,
-        "summary": "This paper explores the concept of the Internet of Things (IoT) and its role in enabling pervasive intelligence. The IoT is envisioned to enhance living standards and professional applications through technologies such as e-health, smart homes, and automation. With an expected 28 billion smart devices connected worldwide by 2021, the paper discusses the current challenges and future trends in IoT. The authors highlight the need for increased data volume, connected devices, and user data-rate, as well as reduced latency and extended battery life. The paper aims to provide a review of current challenges, future trends, and prospects in IoT, with a focus on the integration of sensors, embedded systems, and cyber-physical systems. The key contributions of the paper are expected to be a comprehensive overview of the IoT landscape and its potential applications, as well as insights into the future directions of IoT research.",
-        "timestamp": "2026-05-29T18:20:58.153727",
-        "workspace": "physics_project"
-    },
-    {
-        "filename": "opticsbook.pdf",
-        "title": "Physics of Light and Optics",
-        "chunk_count": 835,
-        "sections": [
-            "Header/Title"
-        ],
-        "table_count": 21,
-        "reference_count": 0,
-        "summary": "No Abstract or Introduction content available to summarize.",
-        "timestamp": "2026-05-30T12:00:11.847477",
+        "summary": "This paper reviews the current challenges, future trends, and prospects of the Internet of Things (IoT) for next-generation smart systems. The core objective is to envision the future of IoT, which is expected to connect around 28 billion smart devices by 2021, with applications in e-health, smart homes, automation, and transportation. The paper highlights the increasing demand for machine-to-machine communication, with over 15 billion devices employing M2M communication. The authors aim to provide a comprehensive overview of the current state of IoT, its future directions, and the challenges that need to be addressed, including increased data volume, connected devices, and user data-rate, as well as reduced latency and extended battery life. The paper's key contributions lie in its analysis of the amalgam of various technologies, such as sensors, embedded systems, and cyber-physical systems, and their integration with device-to-device communications.",
+        "timestamp": "2026-06-15T13:35:28.351303",
         "workspace": "physics_project"
     },
     {
@@ -74,8 +74,8 @@
         ],
         "table_count": 0,
         "reference_count": 106,
-        "summary": "This paper presents AlphaFold 3, a groundbreaking advancement in computational biology that enhances protein structure prediction and simulation. The core objective is to integrate deep learning with physics-based molecular dynamics, enabling a shift from traditional static structural modeling to dynamic molecular simulations. AlphaFold 3's novel architecture combines multi-scale transformer architectures, biologically-informed cross-attention mechanisms, and geometry-aware optimization strategies, dramatically improving predictive accuracy and generalization across diverse protein families. The key contribution is the reframing of protein folding predictions as a differentiable process, allowing for the integration of machine learning and biophysical principles. This approach has far-reaching implications for precision medicine, rational drug discovery, and intelligent biological design, enabling the modeling of protein dynamics, conformational ensembles, interaction networks, and allostery. AlphaFold 3's differentiable design promises to accelerate the development of personalized therapeutics and bridge the gap between computational biology and experimental research.",
-        "timestamp": "2026-05-30T14:07:51.106539",
+        "summary": "This paper introduces AlphaFold 3, a transformative advancement in computational biology that enhances protein structure prediction and simulation. The core objective is to reframe protein folding predictions as a differentiable process, bridging traditional static structural modeling with dynamic molecular simulations. AlphaFold 3 achieves this through novel multi-scale transformer architectures, biologically-informed cross-attention mechanisms, and geometry-aware optimization strategies. The methodology integrates deep learning with physics-based molecular dynamics, allowing for the simulation of protein dynamics and conformational ensembles. The key contributions include improved predictive accuracy and generalization across diverse protein families, and a paradigm shift towards differentiable simulation. This approach has far-reaching implications for precision medicine and rational drug discovery, enabling the development of personalized therapeutics and intelligent biological design. By treating AlphaFold 3 as an implicit structural simulator, the paper highlights its potential to reveal protein dynamics, model interaction networks, and accelerate progress in fields such as drug discovery and enzyme engineering.",
+        "timestamp": "2026-06-15T13:38:23.329922",
         "workspace": "default"
     },
     {
@@ -93,8 +93,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs. The methodology involves utilizing GCN to learn molecular representations from graph-structured data. The key contribution of this work is the application of GCN to predict molecular toxicity with high accuracy. By leveraging graph neural networks, this approach aims to improve upon traditional methods, providing a more efficient and effective means of molecular property prediction. The paper's focus on GCN-based molecular property prediction has the potential to significantly impact the drug discovery process, enabling faster and more cost-effective development of new compounds.",
-        "timestamp": "2026-06-03T10:42:04.486094",
+        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to develop an effective method for predicting molecular properties early in the drug discovery pipeline, reducing costs and accelerating development. The methodology involves utilizing GCN to learn molecular representations and predict properties. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging GCN, the approach can effectively capture complex molecular structures and relationships, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a promising tool for the pharmaceutical industry.",
+        "timestamp": "2026-06-15T13:39:59.637982",
         "workspace": "default"
     }
 ]

@@ -417,7 +417,7 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
     print(f"[*] PDF Ingestion: Successfully ingested '{filename}' in workspace '{workspace}' (Title: '{title}', {len(chunks)} chunks, {len(parsed_data['tables'])} tables).")
     return record
 
-def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.40, workspace: str = "default") -> tuple:
+def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0.40, workspace: str = "default", metadata_filter: dict = None) -> tuple:
     """
     Queries the pdf_documents collection in ChromaDB for chunks related to a search query.
     Returns formatted context block and raw retrieved chunk items.
@@ -440,11 +440,15 @@ def search_pdf_context(query: str, n_results: int = 5, min_similarity: float = 0
         actual_n = min(n_results, total_docs)
         
         # Query collection
-        results = collection.query(
-            query_texts=[query],
-            n_results=actual_n,
-            include=["documents", "metadatas", "distances"]
-        )
+        query_kwargs = {
+            "query_texts": [query],
+            "n_results": actual_n,
+            "include": ["documents", "metadatas", "distances"]
+        }
+        if metadata_filter:
+            query_kwargs["where"] = metadata_filter
+            
+        results = collection.query(**query_kwargs)
         
         retrieved_chunks = []
         if not results or not results.get("documents") or not results["documents"][0]:
