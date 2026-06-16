@@ -16,16 +16,17 @@ def build_planner_prompt(topic: str) -> str:
 
 Topic to Analyze: "{topic}"
 
-Decompose this topic intelligently into logical, sequential research phases. Identify the critical focus areas, core subtopics, and potential challenges.
+Decompose this topic intelligently into logical, sequential research phases. Identify the critical focus areas, core subtopics, analytical angles to investigate, and potential challenges.
 Avoid duplicate subtopics. Ensure a logical progression from fundamentals to advanced concepts.
+Think like a senior research director commissioning a professional analyst report — the goal is INSIGHT, not just description.
 
 You MUST return your output STRICTLY as a valid JSON object matching the schema below. Do not wrap it in markdown code blocks like ```json.
 Output ONLY the raw JSON object.
 
 {{
-    "overview": "<string: brief summary of what the research must accomplish>",
+    "overview": "<string: brief summary of what the research must accomplish and WHY it matters>",
     "objectives": [
-        "<string: objective 1>",
+        "<string: objective 1 — analytical goal, not just 'understand X'>",
         "<string: objective 2>"
     ],
     "roadmap": [
@@ -33,9 +34,21 @@ Output ONLY the raw JSON object.
         "<string: Phase 2 description>"
     ],
     "subtopics": [
-        "<string: Core Subtopic 1 (e.g., Fundamentals)>",
+        "<string: Core Subtopic 1 (e.g., Fundamentals & Mechanisms)>",
         "<string: Core Subtopic 2>",
         "<string: Core Subtopic 3>"
+    ],
+    "analytical_angles": [
+        "<string: A comparative or causal angle to investigate, e.g., 'Traditional rule-based approaches vs modern ML-driven approaches'>",
+        "<string: Another analytical angle, e.g., 'Impact of GPU hardware scaling on model capability'>",
+        "<string: Another analytical angle, e.g., 'Open-source vs proprietary ecosystem trade-offs'>"
+    ],
+    "insight_targets": [
+        "<string: Most Important Recent Development — identify and analyze>",
+        "<string: Most Significant Strategic Opportunity — identify and analyze>",
+        "<string: Most Critical Limitation or Risk — identify and analyze>",
+        "<string: Most Important Emerging Trend — identify and analyze>",
+        "<string: Most Relevant Research Gap — identify and analyze>"
     ],
     "technical_areas": [
         "<string: technical concept 1>",
@@ -46,16 +59,16 @@ Output ONLY the raw JSON object.
         "<string: Step 2>"
     ],
     "critical_questions": [
-        "<string: key question to answer>"
+        "<string: A key analytical question the research MUST answer>"
     ],
     "focus_areas": [
-        "<string: area to prioritize>"
+        "<string: area to prioritize for deep analysis>"
     ],
     "potential_challenges": [
         "<string: hurdle in research or adoption>"
     ],
     "future_opportunities": [
-        "<string: future trajectory>"
+        "<string: specific future trajectory with reasoning>"
     ]
 }}
 """

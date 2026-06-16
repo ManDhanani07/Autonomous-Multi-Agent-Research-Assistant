@@ -38,8 +38,22 @@ else:
     DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 
 _client_lock = threading.Lock()
+_ef_lock = threading.Lock()
 _cached_client = None
+_cached_ef = None
 _cached_collections = {}
+
+def get_embedding_function():
+    """
+    Returns a thread-safe cached instance of Chroma's DefaultEmbeddingFunction.
+    """
+    global _cached_ef
+    if _cached_ef is None:
+        with _ef_lock:
+            if _cached_ef is None:
+                from chromadb.utils import embedding_functions
+                _cached_ef = embedding_functions.DefaultEmbeddingFunction()
+    return _cached_ef
 
 def get_chroma_client():
     """
@@ -95,18 +109,27 @@ def initialize_chroma(workspace: str = "default"):
     if collection_name in _cached_collections:
         return _cached_collections[collection_name]
         
-    client = get_chroma_client()
-    from chromadb.utils import embedding_functions
-    fast_ef = embedding_functions.DefaultEmbeddingFunction()
+    # Load embedding function outside the global client lock to prevent blocking
+    # concurrent client requests (like list_workspaces) during model instantiation.
+    fast_ef = get_embedding_function()
     
-    collection = client.get_or_create_collection(
-        name=collection_name,
-        embedding_function=fast_ef,
-        metadata={"hnsw:space": "cosine"}
-    )
-    
-    _cached_collections[collection_name] = collection
-    return collection
+    with _client_lock:
+        # Double-check cache lock pattern
+        if collection_name in _cached_collections:
+            return _cached_collections[collection_name]
+            
+        client = get_chroma_client()
+        
+        collection = client.get_or_create_collection(
+            name=collection_name,
+            embedding_function=fast_ef,
+            metadata={"hnsw:space": "cosine"}
+        )
+        
+        _cached_collections[collection_name] = collection
+        return collection
+
+
 
 def list_workspaces() -> list[str]:
     """

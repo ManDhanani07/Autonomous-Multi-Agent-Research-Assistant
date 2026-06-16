@@ -45,7 +45,7 @@ def run_optimization_loop(topic: str, initial_report: str) -> dict:
         return _fallback_result(initial_report, initial_summary, {"error": "Summarizer failed."})
 
     print("[Loop Controller] Evaluating v1 report...")
-    initial_critique = critique_research(initial_report, initial_summary)
+    initial_critique = critique_research(initial_report, initial_summary, topic=topic)
     
     if "error" in initial_critique:
         print("[Loop Controller Error] Critic Agent failed on v1. Aborting optimization.")
@@ -80,7 +80,7 @@ def run_optimization_loop(topic: str, initial_report: str) -> dict:
     optimized_summary = summarize_research(optimized_report)
     
     print("[Loop Controller] Re-evaluating improved v2 report...")
-    optimized_critique = critique_research(optimized_report, optimized_summary)
+    optimized_critique = critique_research(optimized_report, optimized_summary, topic=topic, previous_critique=initial_critique)
     
     if "error" in optimized_critique:
         print("[Loop Controller Error] Critic Agent failed on v2. Falling back to v1.")

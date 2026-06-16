@@ -172,13 +172,20 @@ def search_semantic_scholar(query: str, limit: int = 10) -> list:
         headers["x-api-key"] = api_key.strip()
         
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=5)
-        if response.status_code == 429:
-            print("[*] Academic Search: Semantic Scholar rate limited (429). Retrying in 1.2s...")
-            time.sleep(1.2)
+        max_attempts = 3
+        response = None
+        for attempt in range(max_attempts):
             response = requests.get(url, params=params, headers=headers, timeout=5)
+            if response.status_code == 429:
+                if attempt < max_attempts - 1:
+                    import random
+                    sleep_time = (attempt + 1) * 1.5 + random.uniform(0.2, 1.5)
+                    print(f"[*] Academic Search: Semantic Scholar rate limited (429) on attempt {attempt+1}/{max_attempts}. Retrying in {sleep_time:.2f}s...")
+                    time.sleep(sleep_time)
+                    continue
+            break
             
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             data = response.json()
             raw_papers = data.get("data", [])
             for p in raw_papers:
@@ -512,8 +519,16 @@ def search_academic_literature(query: str, limit: int = 10) -> list:
     
     # Fetch more candidates to ensure we can filter and find the best ones
     fetch_limit = limit + 5
-    arxiv_results = search_arxiv(search_term, fetch_limit)
-    scholar_results = search_semantic_scholar(search_term, fetch_limit)
+    
+    # Run API retrievals concurrently in a thread pool to avoid sequential HTTP blocking
+    from concurrent.futures import ThreadPoolExecutor
+    print(f"[*] Academic Search: Querying arXiv and Semantic Scholar concurrently...")
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_arxiv = executor.submit(search_arxiv, search_term, fetch_limit)
+        future_scholar = executor.submit(search_semantic_scholar, search_term, fetch_limit)
+        
+        arxiv_results = future_arxiv.result()
+        scholar_results = future_scholar.result()
     
     combined_results = arxiv_results + scholar_results
     final_papers = rank_and_deduplicate_papers(combined_results, target_limit=limit, query=search_term)

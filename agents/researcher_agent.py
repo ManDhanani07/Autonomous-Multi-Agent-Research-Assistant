@@ -49,7 +49,7 @@ def create_research_prompt(topic: str,
       1. Retrieved semantic memory (RAG context)
       2. Live web search results
       3. Deep-scraped article content
-      4. Structured report requirements
+      4. Structured 12-section expert-level analytical report requirements
 
     Args:
         topic          (str):  The research subject.
@@ -62,9 +62,9 @@ def create_research_prompt(topic: str,
         str: The fully assembled prompt string.
     """
     prompt = (
-        "You are an elite AI Research Scientist and Technical Analyst. "
-        "Your task is to produce a comprehensive, highly accurate, and professional "
-        "research report on the following topic:\n\n"
+        "You are an elite AI Research Scientist, Senior Technical Analyst, and Strategic Advisor. "
+        "Your mission is NOT to describe or explain — it is to ANALYZE, COMPARE, EVALUATE, SYNTHESIZE, "
+        "and GENERATE INSIGHTS. Produce a comprehensive, expert-level analytical research report on:\n\n"
         f'Topic: "{topic}"\n'
     )
 
@@ -79,90 +79,218 @@ def create_research_prompt(topic: str,
     # ── Build the References block ─────────────────────────────────────────
     references_block = ""
     if source_urls:
-        references_block = "\n## 8. References\n"
+        references_block = "\n## 12. References\n"
         for i, src in enumerate(source_urls, start=1):
             title = src.get("title", f"Source {i}")
             url   = src.get("url", "#")
             if url.startswith("http"):
-                # Real academic URL — render as clickable link
                 references_block += f"{i}. [{title}]({url})\n"
             elif url.startswith("/app/static/") or url.startswith("/static/"):
-                # Local served PDF link
                 clean_title = title.replace("[PDF Library] ", "").strip()
                 references_block += f"{i}. 📄 [{clean_title}]({url}) _(from your PDF library)_\n"
             else:
                 clean_title = title.replace("[PDF Library] ", "").strip()
                 references_block += f"{i}. 📄 {clean_title} _(from your PDF library)_\n"
 
-
     # ── Inject Planner Guidance ───────────────────────────────────────────
     if plan and isinstance(plan, dict):
         objectives = "\n- ".join(plan.get('objectives', []))
         subtopics = "\n- ".join(plan.get('subtopics', []))
-        
+        analytical_angles = "\n- ".join(plan.get('analytical_angles', []))
+        insight_targets = "\n- ".join(plan.get('insight_targets', []))
+
         prompt += f"""
 ### STRATEGIC PLANNER GUIDANCE ###
-Use the following objectives and subtopics as your primary research focus:
+Use the following objectives, subtopics, and analytical frames as your primary research focus:
 Objectives:
 - {objectives}
-Subtopics to cover:
+Subtopics to cover with depth:
 - {subtopics}
 """
+        if analytical_angles:
+            prompt += f"""Comparative / Analytical Angles to address:
+- {analytical_angles}
+"""
+        if insight_targets:
+            prompt += f"""Insight targets — generate specific insights for each:
+- {insight_targets}
+"""
 
-    # ── Structured report instructions ────────────────────────────────────
-    # Dynamic memory instructions
+    # ── Dynamic memory instructions ────────────────────────────────────────
     if memory_context:
-        intro_memory = "If related memory exists, note how this topic connects to previous research."
-        conclusion_memory = "Powerful, synthesised concluding paragraph referencing both memory and web data."
-        constraint_memory = "- If memory context was provided, explicitly connect insights across research sessions."
+        intro_memory = "If related memory exists, note how this topic analytically connects to and extends previous research findings."
+        conclusion_memory = "Powerful synthesized concluding paragraph referencing both memory context and web data, identifying convergence points and unresolved tensions across sessions."
+        constraint_memory = "- If memory context was provided, explicitly connect insights across research sessions with analytical depth — identify patterns and contradictions."
     else:
-        intro_memory = "Provide a high-level overview of the topic. Since no past research memory exists for this topic, do NOT refer to or invent any previous research sessions, past sessions, or memory (e.g. do not write 'as noted in previous sessions' or 'Memory 1', 'Memory 2')."
-        conclusion_memory = "Powerful, synthesised concluding paragraph referencing the retrieved data and papers."
-        constraint_memory = "- Do NOT reference or invent any past memory, past sessions, previous research sessions, or memory names (e.g. 'Memory 1', 'Memory 2'), since no memory context was provided."
+        intro_memory = "Provide a strategic overview of why this topic demands research attention now. Since no past research memory exists, do NOT reference previous sessions or write 'Memory 1', 'Memory 2'."
+        conclusion_memory = "Powerful synthesized concluding paragraph referencing the retrieved data and academic papers, identifying convergence points and the most significant open questions."
+        constraint_memory = "- Do NOT reference or invent any past memory, past sessions, or memory names (e.g. 'Memory 1', 'Memory 2'), since no memory context was provided."
 
     prompt += f"""
-Please generate a detailed, structured markdown report. Follow the exact structure
-below, using professional headings, bullet points where appropriate, and concise
-but deeply technical explanations. Where you have retrieved memory context above,
-actively integrate those insights to produce richer, connected analysis.
 
-**Required Report Structure:**
+=== ANALYST MINDSET DIRECTIVE ===
+You are a SENIOR RESEARCH ANALYST, not a teacher or encyclopedia.
+Your job is to produce the kind of report a researcher, engineer, or executive decision-maker would pay for.
+Every section must contain REASONING, CAUSATION, and ANALYSIS — not just facts or definitions.
+
+**Required Report Structure (12 sections, strictly in this order):**
 
 # Research Report: {topic}
 
 ## 1. Introduction
-High-level overview: what it is, why it matters, current industry relevance.
+- Strategic significance: WHY does this topic matter NOW in the current technology and industry landscape?
+- Key forces that have brought this field to its current state.
+- Critical research questions this report will address.
+- Historical trajectory: How did this field emerge and what inflection points shaped it?
 {intro_memory}
 
-## 2. Core Concepts
-Fundamental principles, underlying technologies, or key theories.
-Break down complex ideas into professional, accessible terms.
+## 2. Core Concepts & Foundations
+- Explain underlying principles with technical precision and analytical depth.
+- Break down foundational mechanisms and how they interact with each other.
+- Distinguish between commonly confused concepts — do NOT just define, CONTRAST and clarify.
+- Identify which foundational concepts are settled vs still actively debated.
+- Include mathematical/algorithmic/computational foundations where applicable.
 
-## 3. Applications
-Real-world use cases and industry applications. Use bullet points for clarity.
+## 3. Current State of Research
+- What is the current state-of-the-art? Name specific milestones, benchmarks, or model results.
+- Who is driving advancement — name key institutions, research groups, companies.
+- What are the dominant research paradigms and the active academic debates?
+- What paradigm shifts have occurred in the past 2-3 years?
+- Which sub-fields are experiencing the fastest growth and why?
 
-## 4. Advantages
-Main benefits, efficiencies, or positive impacts. Why organisations adopt this.
+## 4. Detailed Technical Analysis
+**This section is the analytical core of the report. Do NOT skip or summarize — be rigorous.**
 
-## 5. Challenges
-Current limitations, technical hurdles, ethical concerns, or adoption barriers.
+### 4.1 Traditional vs Modern Approaches
+Identify the most important comparison relevant to this topic and provide a full contrast:
+| Dimension | Traditional / Classical Approach | Modern / State-of-the-Art Approach |
+|-----------|----------------------------------|-------------------------------------|
+| Core mechanism | | |
+| Strengths | | |
+| Limitations | | |
+| Current relevance | | |
 
-## 6. Future Scope
-Trajectory, upcoming innovations, and long-term potential (5–10 year horizon).
+Analyze what specifically drove the transition from traditional to modern approaches.
 
-## 7. Conclusion
+### 4.2 Causal Growth Analysis
+Do NOT write "X is growing rapidly." Instead, analytically answer:
+- What specific economic, technological, and regulatory forces are driving growth?
+- Which industries and sectors are leading adoption — and WHY those specific sectors?
+- What breakthrough(s) removed the key barriers that previously blocked progress?
+- What is the evidence base for the growth claims?
+
+### 4.3 Competing Approaches & Architectural Trade-offs
+Identify 2-4 competing methodologies, architectures, or paradigms.
+For each: mechanism, strengths, limitations, performance trade-offs, ideal use-case.
+
+### 4.4 Open Research Problems
+Identify the most significant unsolved technical challenges that active researchers are working on.
+For each: describe the problem, why it has resisted solution, and what directions show promise.
+
+## 5. Applications & Real-World Adoption
+For each major industry/domain, use EXACTLY this structured format:
+
+**[Industry/Domain Name]**
+- **Current Usage:** What is actually being deployed today (be specific)?
+- **Business Value:** What measurable economic or operational benefit does it deliver?
+- **Adoption Status:** Early-stage / Growing / Mainstream / Mature
+- **Adoption Barriers:** What specific obstacles are slowing broader adoption?
+- **Future Potential:** What will be possible in 3-5 years that is not possible today?
+
+Cover at minimum 5 distinct industry/domain applications. Do NOT use generic bullet lists.
+
+## 6. Advantages & Strategic Opportunities
+- Concrete advantages with causal explanations — WHY each advantage exists.
+- Strategic positioning opportunities for organizations adopting this technology now vs. later.
+- Competitive moats and first-mover advantages analysis.
+- Economic and operational impact with realistic magnitude estimates.
+- Which advantages are sustainable vs. temporary?
+
+## 7. Challenges, Risks & Limitations
+For each challenge, follow this format:
+- **Challenge:** [Name it precisely]
+- **Technical root cause:** [Why does this challenge exist at a fundamental level?]
+- **Current mitigation:** [What approaches are currently used to handle it?]
+- **Residual risk:** [What risk remains even after mitigation?]
+
+Cover: technical limitations, scalability constraints, ethical risks, regulatory risks, economic barriers, talent/infrastructure gaps.
+
+## 8. Future Outlook
+
+### Short-Term (1–2 Years)
+- Specific expected technical developments (not vague predictions).
+- Near-term adoption milestones.
+- Near-term risks or disruptions to watch.
+
+### Medium-Term (3–5 Years)
+- Maturation points: which problems will be solved, which will remain?
+- Industries poised for transformation and the mechanism of that transformation.
+- Emerging competitive and geopolitical dynamics.
+
+### Long-Term (5–10 Years)
+- Fundamental paradigm shifts this technology could enable.
+- Speculative but evidence-grounded breakthrough scenarios.
+- Strategic implications for industries, economies, and governments.
+
+## 9. Key Insights & Strategic Findings
+Generate EXACTLY 5 numbered strategic insights. Every insight MUST be topic-specific and non-obvious.
+NEVER write generic insights like "This technology is improving" or "Future is bright."
+
+Format each insight EXACTLY as:
+
+**Insight 1: [Specific, Non-Obvious Insight Title]**
+- **Observation:** [Specific finding from research — reference a concrete mechanism, result, or trend]
+- **Impact:** [What does this analytically imply for the field, industry, or technology trajectory?]
+- **Evidence:** [Grounded in which specific aspect of the research findings above?]
+
+**Insight 2: [Specific, Non-Obvious Insight Title]**
+- **Observation:** [...]
+- **Impact:** [...]
+- **Evidence:** [...]
+
+[Continue through Insight 5 in the same format]
+
+## 10. Expert Recommendations
+Generate targeted, actionable recommendations for each audience. Recommendations must be specific to this topic.
+
+**For Researchers:**
+- Top 2-3 highest-value open problems worth investigating.
+- Methodological recommendations (tools, frameworks, datasets to use).
+
+**For Businesses & Decision-Makers:**
+- Strategic adoption timing: invest now, wait, or pilot?
+- Risk management guidance specific to this technology.
+- Key performance indicators to track adoption success.
+
+**For Engineers & Developers:**
+- Best practices and architectures to prioritize for this topic.
+- Specific tools, libraries, or frameworks most relevant now.
+- Technical pitfalls to avoid.
+
+**For Policy Makers:**
+- Regulatory gaps that need attention in the next 1-2 years.
+- Standards and governance frameworks recommended.
+- International competitiveness considerations.
+
+## 11. Conclusion
 {conclusion_memory}
 {references_block}
 """
     prompt += f"""
-**Output Constraints:**
-- Use clean, visually appealing Markdown formatting.
-- Tone: objective, academic yet accessible, highly professional.
-- Do NOT include conversational filler. Begin directly with the Markdown title.
-- STRICT HEADING NUMBERING: Number the main H2 headings exactly as '## 1. Introduction', '## 2. Core Concepts', etc. NEVER write '## 1.1', '## 1.0', or '## 2.0' for these sections. Main H2 headings must use only integers: 1, 2, 3, 4, 5, 6, 7, 8.
-- STRICT LINK RULE: Do NOT invent, fabricate, or guess any URLs or hyperlinks. NEVER write [text](https://example.com) or any placeholder links.
-- STRICT LINK RULE: Only cite sources that were explicitly provided in the web search results above. If you want to reference a source, write its plain URL directly (e.g. https://actual-url.com) — do NOT wrap it in markdown link syntax.
-- The ## 8. References section MUST use ONLY the exact URLs provided in the source list — do not modify or invent any URL.
+=== STRICT OUTPUT QUALITY CONSTRAINTS ===
+- FORBIDDEN: Generic statements like "X is widely used", "X is growing rapidly", "future is promising".
+- FORBIDDEN: Textbook definitions without accompanying analysis.
+- FORBIDDEN: Application bullet lists that do not follow the structured Industry format.
+- FORBIDDEN: Generic Key Insights not grounded in specific research findings.
+- REQUIRED: Every claim must have a "because" — causation, not just correlation.
+- REQUIRED: Key Insights section must have EXACTLY 5 numbered insights in the specified format.
+- REQUIRED: Expert Recommendations must be audience-specific and topic-specific.
+- REQUIRED: Future Outlook must cover all three time horizons (Short/Medium/Long).
+- Tone: Expert analyst — rigorous, incisive, objective, and professional.
+- Begin directly with the Markdown title. No conversational filler.
+- STRICT HEADING NUMBERING: Number H2 headings as '## 1. Introduction', '## 2. Core Concepts & Foundations', etc. NEVER use '## 1.0', '## 1.1'. H2 headings use only integers 1 through 12 (or 11 for Conclusion if no references).
+- STRICT LINK RULE: Do NOT invent URLs. Only cite sources provided in the web search results. Write plain URLs — do NOT wrap in markdown link syntax.
+- The References section MUST use ONLY exact URLs from the source list.
 {constraint_memory}
 """
     return prompt.strip()
@@ -172,39 +300,51 @@ def clean_report_headings(text: str) -> str:
     """
     Cleans up report headings to ensure they use integer numbering (e.g. '## 1. Introduction')
     instead of decimals (e.g. '## 1.0' or '## 1.1').
+    Updated to handle the 12-section analytical researcher report structure
+    as well as the 15-section compiled final report structure.
     """
     import re
     if not text:
         return ""
-        
+
     lines = text.split("\n")
     cleaned_lines = []
-    
-    # Map of standard sections to ensure correct titles are preserved
+
+    # Map of standard researcher-draft section numbers → canonical titles
+    # The heading cleaner only enforces integer numbering; it does NOT rename headings
+    # that it cannot confidently identify. Sections 1-12 are the researcher draft sections.
+    # Sections 1-15 cover the compiled final report.
+    # We simply ensure '## N.x ...' → '## N. <title>' for any N found here.
     section_map = {
-        1: "Introduction",
-        2: "Core Concepts",
-        3: "Applications",
-        4: "Advantages",
-        5: "Challenges",
-        6: "Future Scope",
-        7: "Conclusion",
-        8: "References"
+        1:  "Introduction",
+        2:  "Core Concepts & Foundations",
+        3:  "Current State of Research",
+        4:  "Detailed Technical Analysis",
+        5:  "Applications & Real-World Adoption",
+        6:  "Advantages & Strategic Opportunities",
+        7:  "Challenges, Risks & Limitations",
+        8:  "Future Outlook",
+        9:  "Key Insights & Strategic Findings",
+        10: "Expert Recommendations",
+        11: "Conclusion",
+        12: "References",
+        # Compiled final-report sections (report_agent.py) — 14 sections total
+        13: "Conclusion",
+        14: "References & Source Summary",
     }
-    
+
     for line in lines:
-        # Match H2 headings, e.g., "## 1.0 Introduction" or "## 1.1 Introduction" or "## 1. Introduction" or "## 1 Introduction"
+        # Match H2 headings with optional decimal sub-numbering
         match = re.match(r"^##\s*(\d+)(?:\.\d+)*\s*[\.:\-]?\s*(.*)$", line)
         if match:
             num = int(match.group(1))
             title = match.group(2).strip()
-            
-            if num in section_map:
-                # Clean leading punctuation/numbers from title
-                title = re.sub(r"^[\d\.\s\-:]*", "", title)
-                line = f"## {num}. {title}"
+            if title:
+                # Strip any leading punctuation/numbers the model may have injected
+                title = re.sub(r"^[\d\.\s\-:]*", "", title).strip()
+            line = f"## {num}. {title}" if title else f"## {num}."
         cleaned_lines.append(line)
-        
+
     return "\n".join(cleaned_lines)
 
 
@@ -238,7 +378,6 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
         return {"report": "Error: Please provide a valid research topic.", "memories": []}
 
     # ── STEP 0: Retrieve related memories (RAG) ───────────────────────────
-    print(f"\n[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{topic}'")
     try:
         from memory.memory_manager import search_memory_context
         memory_context, retrieved_memories = search_memory_context(
@@ -276,7 +415,8 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
     fallback_used = False
     
     try:
-        retrieved_papers = search_academic_literature(topic)
+        # Limit to 3 papers — faster API response while still providing rich context
+        retrieved_papers = search_academic_literature(topic, limit=3)
     except Exception as e:
         print(f"[!] Academic Search: Query wrapper failed. Detail: {e}")
         
@@ -352,21 +492,24 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
             if url and url.startswith("http"):
                 source_urls.append({"title": title, "url": url})
                 
-        # Deep scrape web results
+        # Fast scrape: only 1 URL to keep latency low in the fallback path
         deep_context = ""
         scraped_count = 0
         if web_results:
-            for r in web_results[:2]:
+            for r in web_results[:1]:  # Limit to 1 URL (was 2) for speed
                 url = r.get("url")
                 if url and url.startswith("http"):
-                    print(f"[*] Deep Research: Launching browser to scrape content from: {url}")
-                    article_text = scrape_article(url)
-                    if article_text:
-                        deep_context += f"--- Deep Web Source: {r['title']} ({url}) ---\n"
-                        deep_context += f"{article_text[:1500]}\n"
-                        deep_context += "-" * 50 + "\n\n"
-                        scraped_count += 1
-            print(f"[*] Deep Research: Successfully gathered detailed context from {scraped_count} webpages.")
+                    try:
+                        print(f"[*] Deep Research: Scraping content from: {url}")
+                        article_text = scrape_article(url)
+                        if article_text:
+                            deep_context += f"--- Web Source: {r['title']} ({url}) ---\n"
+                            deep_context += f"{article_text[:1200]}\n"
+                            deep_context += "-" * 50 + "\n\n"
+                            scraped_count += 1
+                    except Exception as scrape_err:
+                        print(f"[*] Deep Research: Scrape skipped for {url}: {scrape_err}")
+            print(f"[*] Deep Research: Gathered context from {scraped_count} page(s).")
             
         if deep_context:
             web_context += "\n### DEEP SCRAPED WEB PAGE CONTENT ###\n"
@@ -388,7 +531,8 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
 
     # ── STEP 4: Generate report via Groq ─────────────────────────────────
     print("[*] Transmitting request to Groq AI engine...")
-    report = ask_groq(prompt)
+    # 6000 tokens to accommodate the full 12-section analytical report
+    report = ask_groq(prompt, max_tokens=6000)
 
     if report.startswith("⚠️"):
         print(f"[Researcher Agent] API quota/rate-limit issue detected: {report[:120]}...")
@@ -463,20 +607,40 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
 def create_refinement_prompt(topic: str, previous_report: str, critique_json: dict) -> str:
     """
     Constructs the LLM prompt for iterative self-correction.
-    
+    Updated to enforce the 12-section expert analytical report structure.
+
     Args:
         topic           (str): The original research topic.
         previous_report (str): The v1 markdown report to improve.
         critique_json   (dict): Structured feedback from the Critic Agent.
-        
+
     Returns:
         str: Prompt instructing the model to output a refined report.
     """
     weaknesses = "\n- ".join(critique_json.get("weaknesses", ["None noted."]))
-    missing = "\n- ".join(critique_json.get("missing_topics", ["None noted."]))
-    suggestions = "\n- ".join(critique_json.get("improvement_suggestions", ["None noted."]))
 
-    prompt = f"""You are an elite AI Research Scientist. Your task is to critically refine and optimize an existing research report based on expert feedback.
+    # Handle missing topics (support both old and new key names)
+    missing_list = critique_json.get("missing_research_areas", critique_json.get("missing_areas", critique_json.get("missing_topics", ["None noted."])))
+    if isinstance(missing_list, list):
+        missing = "\n- ".join(missing_list)
+    else:
+        missing = str(missing_list)
+
+    # Handle suggestions / improvement priorities
+    imp_priorities = critique_json.get("improvement_priorities", {})
+    if isinstance(imp_priorities, dict) and imp_priorities:
+        suggestions_list = []
+        for prio, items in imp_priorities.items():
+            if isinstance(items, list):
+                for item in items:
+                    suggestions_list.append(f"[{prio}] {item}")
+            elif isinstance(items, str):
+                suggestions_list.append(f"[{prio}] {items}")
+        suggestions = "\n- ".join(suggestions_list) if suggestions_list else "None noted."
+    else:
+        suggestions = "\n- ".join(critique_json.get("improvement_recommendations", critique_json.get("improvement_suggestions", ["None noted."])))
+
+    prompt = f"""You are a Senior AI Research Analyst. Your task is to critically refine and analytically upgrade an existing research report based on expert critique feedback.
 
 Topic: "{topic}"
 
@@ -484,21 +648,36 @@ Topic: "{topic}"
 {previous_report}
 
 ### EXPERT CRITIQUE & FEEDBACK ###
-Weaknesses to fix:
+Weaknesses identified (fix all of these):
 - {weaknesses}
 
-Missing Topics to integrate:
+Missing topics to integrate (add analytical depth for each):
 - {missing}
 
-Improvement Suggestions to apply:
+Improvement priorities to apply:
 - {suggestions}
 
-### INSTRUCTIONS ###
-1. Generate an updated, fully-optimized version of the research report.
-2. Retain all the high-quality insights and structure from the previous report.
-3. Directly address the feedback by filling in the missing topics and fixing the weaknesses.
-4. Output MUST follow the same professional markdown structure as the original (e.g. ## 1. Introduction, ## 2. Core Concepts, etc).
-5. Output ONLY the new markdown report. Do not include conversational filler or explanations of what you changed.
+### REFINEMENT INSTRUCTIONS ###
+1. Generate an updated, fully-optimized expert analytical research report.
+2. Retain high-quality insights and analytical depth from the previous report.
+3. Directly address EVERY weakness and missing topic identified in the critique.
+4. Strengthen the analytical depth — add causal analysis, comparative reasoning, and evidence-grounded insights.
+5. The output MUST follow the 12-section expert analytical report structure:
+   ## 1. Introduction
+   ## 2. Core Concepts & Foundations
+   ## 3. Current State of Research
+   ## 4. Detailed Technical Analysis (MUST include Traditional vs Modern comparison table and Causal Growth Analysis)
+   ## 5. Applications & Real-World Adoption (MUST use Industry/Business Value/Adoption Status/Future Potential format)
+   ## 6. Advantages & Strategic Opportunities
+   ## 7. Challenges, Risks & Limitations
+   ## 8. Future Outlook (MUST cover Short/Medium/Long-term time horizons)
+   ## 9. Key Insights & Strategic Findings (MUST include EXACTLY 5 numbered insights with Observation/Impact/Evidence)
+   ## 10. Expert Recommendations (MUST be broken by audience: Researchers/Businesses/Engineers/Policy Makers)
+   ## 11. Conclusion
+   ## 12. References (if sources available)
+6. FORBIDDEN: Generic statements, textbook definitions without analysis, vague future predictions.
+7. REQUIRED: Every major claim must include causation reasoning — not just what, but WHY.
+8. Output ONLY the improved markdown report. Do not explain your changes.
 """
     return prompt.strip()
 
@@ -521,7 +700,8 @@ def refine_research(topic: str, previous_report: str, critique_json: dict) -> st
     prompt = create_refinement_prompt(topic, previous_report, critique_json)
     
     print("[Researcher Agent] Transmitting refinement request to Groq...")
-    optimized_report = ask_groq(prompt, max_tokens=4000)
+    # 6000 tokens for the 12-section refined analytical report
+    optimized_report = ask_groq(prompt, max_tokens=6000)
     
     if optimized_report.startswith("⚠️"):
         print(f"[Researcher Agent Error] API quota issue during refinement.")

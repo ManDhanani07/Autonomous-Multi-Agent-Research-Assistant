@@ -334,10 +334,9 @@ def ingest_pdf_to_chroma(pdf_path: str, filename: str, strategy: str = "semantic
     # 2. Store chunks in ChromaDB dedicated pdf_documents collection
     print(f"[*] PDF Ingestion: Storing {len(chunks)} chunks in ChromaDB...")
     try:
-        from memory.chroma_store import get_chroma_client, get_collection_name_for_workspace
+        from memory.chroma_store import get_chroma_client, get_collection_name_for_workspace, get_embedding_function
         client = get_chroma_client()
-        from chromadb.utils import embedding_functions
-        fast_ef = embedding_functions.DefaultEmbeddingFunction()
+        fast_ef = get_embedding_function()
         
         collection_name = get_collection_name_for_workspace(workspace, suffix="_pdfs")
         pdf_collection = client.get_or_create_collection(

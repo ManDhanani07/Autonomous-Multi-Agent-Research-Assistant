@@ -32,6 +32,321 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from frontend.shared_theme import apply_shared_theme
 from tools.pdf_generator import convert_markdown_to_pdf_bytes
 
+def parse_memory_document(doc_text):
+    import re
+    sections = {}
+    
+    # Locate section headers
+    summary_idx = doc_text.find("SUMMARY:")
+    critique_idx = doc_text.find("CRITIQUE:")
+    research_idx = doc_text.find("FULL RESEARCH:")
+    
+    if summary_idx != -1 and critique_idx != -1 and research_idx != -1:
+        sections['topic'] = doc_text[:summary_idx].replace("TOPIC:", "").strip()
+        sections['summary'] = doc_text[summary_idx:critique_idx].replace("SUMMARY:", "").strip()
+        sections['critique'] = doc_text[critique_idx:research_idx].replace("CRITIQUE:", "").strip()
+        sections['full_research'] = doc_text[research_idx:].replace("FULL RESEARCH:", "").strip()
+    else:
+        # Fallback if the markers are not present
+        sections['raw'] = doc_text
+        
+    return sections
+
+def parse_critique_dict(critique_str):
+    import ast
+    import json
+    import re
+    critique_str = critique_str.strip()
+    # Try parsing string representation of Python dict
+    try:
+        return ast.literal_eval(critique_str)
+    except Exception:
+        pass
+    
+    # Try parsing JSON
+    try:
+        return json.loads(critique_str)
+    except Exception:
+        pass
+    
+    # Search for json/dict block in case of wrapping or extra text
+    try:
+        match = re.search(r'\{.*\}', critique_str, re.DOTALL)
+        if match:
+            return ast.literal_eval(match.group(0))
+    except Exception:
+        pass
+        
+    try:
+        match = re.search(r'\{.*\}', critique_str, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+    except Exception:
+        pass
+        
+    return None
+
+def render_premium_critique_ui(crit_dict: dict):
+    if not isinstance(crit_dict, dict):
+        st.markdown(str(crit_dict))
+        return
+        
+    score = crit_dict.get('score', 'N/A')
+    grade = crit_dict.get('research_grade')
+    
+    grade_badge = f"<span style='background:rgba(251, 191, 36, 0.1); color:#fbbf24; border:1px solid rgba(251, 191, 36, 0.3); padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:700;'>Grade: {grade}</span>" if grade else ""
+    
+    # Score badge/metric
+    st.markdown(f"""
+    <div style='display: flex; align-items: center; justify-content: space-between; background: rgba(239, 68, 68, 0.08); padding: 16px 24px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.15); margin-bottom: 20px;'>
+        <div style='display: flex; align-items: center; gap: 12px;'>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style='font-size: 1.1rem; font-weight: 700; color: #ffffff;'>Critic Quality Assessment Score</span>
+            {grade_badge}
+        </div>
+        <div style='font-size: 1.8rem; font-weight: 800; color: #ef4444;'>{score} <span style='font-size: 1rem; color: #a1a1aa;'>/ 10</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Strengths and Weaknesses side by side
+    col_str, col_weak = st.columns(2)
+    
+    with col_str:
+        st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
+        strengths = crit_dict.get('strengths', [])
+        if strengths:
+            for s in strengths:
+                st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
+        else:
+            st.write("None identified.")
+            
+    with col_weak:
+        st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
+        weaknesses = crit_dict.get('weaknesses', [])
+        if weaknesses:
+            for w in weaknesses:
+                st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
+        else:
+            st.write("None identified.")
+    
+    # Quality & Coverage Assessments
+    q_assessment = crit_dict.get('report_quality_assessment')
+    c_analysis = crit_dict.get('coverage_analysis')
+    if q_assessment or c_analysis:
+        col_q, col_c = st.columns(2)
+        with col_q:
+            if q_assessment:
+                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
+                st.write(q_assessment)
+        with col_c:
+            if c_analysis:
+                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
+                if isinstance(c_analysis, dict):
+                    for sec, val in c_analysis.items():
+                        st.markdown(f"<div style='font-size:0.9rem; margin-bottom:4px; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
+                else:
+                    st.write(c_analysis)
+
+    # Accuracy & Completeness Assessments
+    a_assessment = crit_dict.get('accuracy_assessment')
+    comp_assessment = crit_dict.get('completeness_assessment')
+    if a_assessment or comp_assessment:
+        col_a, col_comp = st.columns(2)
+        with col_a:
+            if a_assessment:
+                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
+                st.write(a_assessment)
+        with col_comp:
+            if comp_assessment:
+                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
+                st.write(comp_assessment)
+
+    # Missing areas
+    missing = crit_dict.get('missing_research_areas', crit_dict.get('missing_areas', crit_dict.get('missing_topics', [])))
+    if missing:
+        st.markdown("<p style='font-weight:700; color:#f59e0b; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg> Missing Research Areas & Gaps</p>", unsafe_allow_html=True)
+        for m in missing:
+            st.markdown(f"<div style='background:rgba(245, 158, 11, 0.04); border-left:3px solid #f59e0b; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{m}</div>", unsafe_allow_html=True)
+    
+    # Suggestions / Improvement Priorities
+    imp_priorities = crit_dict.get('improvement_priorities', {})
+    suggestions = crit_dict.get('improvement_recommendations', crit_dict.get('improvement_suggestions', []))
+    
+    if imp_priorities and isinstance(imp_priorities, dict):
+        st.markdown("<p style='font-weight:700; color:#3b82f6; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Priorities</p>", unsafe_allow_html=True)
+        for prio, items in imp_priorities.items():
+            if items:
+                prio_color = "#ef4444" if "High" in prio else ("#f59e0b" if "Medium" in prio else "#3b82f6")
+                st.markdown(f"<p style='font-weight:800; color:{prio_color}; font-size:0.95rem; margin-top:8px; margin-bottom:4px;'>{prio}</p>", unsafe_allow_html=True)
+                if isinstance(items, list):
+                    for item in items:
+                        st.markdown(f"<div style='background:rgba(59, 130, 246, 0.03); border-left:3px solid {prio_color}; padding:6px 12px; border-radius:4px; margin-bottom:6px; color:#d4d4d8; font-size:0.95rem;'>{item}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='background:rgba(59, 130, 246, 0.03); border-left:3px solid {prio_color}; padding:6px 12px; border-radius:4px; margin-bottom:6px; color:#d4d4d8; font-size:0.95rem;'>{items}</div>", unsafe_allow_html=True)
+    elif suggestions:
+        st.markdown("<p style='font-weight:700; color:#3b82f6; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Recommendations</p>", unsafe_allow_html=True)
+        for su in suggestions:
+            st.markdown(f"<div style='background:rgba(59, 130, 246, 0.04); border-left:3px solid #3b82f6; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{su}</div>", unsafe_allow_html=True)
+    
+    # Confidence level & verdict
+    conf = crit_dict.get('confidence_level')
+    verdict = crit_dict.get('final_verdict')
+    if conf:
+        st.markdown(f"<p style='font-weight:700; color:#818cf8; font-size:1.1rem; margin-top:20px; margin-bottom:6px;'>Confidence Level</p>", unsafe_allow_html=True)
+        st.write(conf)
+    if verdict:
+        st.markdown(f"<p style='font-weight:700; color:#fb7185; font-size:1.1rem; margin-top:20px; margin-bottom:6px;'>Final Verdict</p>", unsafe_allow_html=True)
+        st.write(verdict)
+
+def render_memory_tabs(doc_text):
+    sections = parse_memory_document(doc_text)
+    if 'raw' in sections:
+        st.markdown(sections['raw'])
+    else:
+        # Render clean tabs
+        tab_sum, tab_crit, tab_res = st.tabs([
+            "📝 Executive Summary",
+            "🧐 Critic Analysis",
+            "🔬 Full Research Report"
+        ])
+        with tab_sum:
+            st.markdown(
+                f"""
+                <div style='padding: 12px 16px; background: rgba(129, 140, 248, 0.05); border-left: 4px solid #818cf8; border-radius: 6px; margin-bottom: 16px;'>
+                    <h4 style='margin: 0; font-weight: 700; color: #818cf8; font-size: 1.15rem;'>📝 Executive Summary</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(sections['summary'])
+        with tab_crit:
+            st.markdown(
+                f"""
+                <div style='padding: 12px 16px; background: rgba(251, 191, 36, 0.05); border-left: 4px solid #fbbf24; border-radius: 6px; margin-bottom: 16px;'>
+                    <h4 style='margin: 0; font-weight: 700; color: #fbbf24; font-size: 1.15rem;'>🧐 AI Critic Analysis</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            crit_data = parse_critique_dict(sections['critique'])
+            if crit_data and isinstance(crit_data, dict):
+                render_premium_critique_ui(crit_data)
+            else:
+                st.markdown(sections['critique'])
+        with tab_res:
+            st.markdown(
+                f"""
+                <div style='padding: 12px 16px; background: rgba(52, 211, 153, 0.05); border-left: 4px solid #34d399; border-radius: 6px; margin-bottom: 16px;'>
+                    <h4 style='margin: 0; font-weight: 700; color: #34d399; font-size: 1.15rem;'>🔬 Full Research Report</h4>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(sections['full_research'])
+
+def format_memory_document(doc_text):
+    import ast
+    import json
+    import re
+    
+    summary_idx = doc_text.find("SUMMARY:")
+    critique_idx = doc_text.find("CRITIQUE:")
+    research_idx = doc_text.find("FULL RESEARCH:")
+    
+    if summary_idx != -1 and critique_idx != -1 and research_idx != -1:
+        topic = doc_text[:summary_idx].replace("TOPIC:", "").strip()
+        summary = doc_text[summary_idx:critique_idx].replace("SUMMARY:", "").strip()
+        critique_raw = doc_text[critique_idx:research_idx].replace("CRITIQUE:", "").strip()
+        full_research = doc_text[research_idx:].replace("FULL RESEARCH:", "").strip()
+        
+        # Try to parse the critique raw string
+        crit_dict = None
+        try:
+            crit_dict = ast.literal_eval(critique_raw)
+        except Exception:
+            try:
+                crit_dict = json.loads(critique_raw)
+            except Exception:
+                # Try regex search for JSON
+                match = re.search(r'\{.*\}', critique_raw, re.DOTALL)
+                if match:
+                    try:
+                        crit_dict = ast.literal_eval(match.group(0))
+                    except Exception:
+                        try:
+                            crit_dict = json.loads(match.group(0))
+                        except Exception:
+                            pass
+        
+        # Now format the parts
+        formatted_doc = f"## **Topic**: {topic}\n\n"
+        
+        # 1. Summary
+        formatted_doc += "## **📝 Executive Summary**\n"
+        formatted_doc += f"{summary}\n\n"
+        
+        # 2. Critique
+        formatted_doc += "## **🧐 AI Critic Analysis**\n"
+        if isinstance(crit_dict, dict):
+            # Format it beautifully as Markdown
+            formatted_doc += f"## **Overall Score**\n{crit_dict.get('score', 'N/A')}/10\n\n"
+            
+            if "research_grade" in crit_dict:
+                formatted_doc += f"## **Research Grade**\n{crit_dict.get('research_grade', 'N/A')}\n\n"
+            
+            if "report_quality_assessment" in crit_dict:
+                formatted_doc += f"## **Report Quality Assessment**\n{crit_dict.get('report_quality_assessment', 'N/A')}\n\n"
+            
+            coverage_dict = crit_dict.get("coverage_analysis", {})
+            if isinstance(coverage_dict, dict):
+                coverage_str = "\n".join([f"- **{sec}**: {val}" for sec, val in coverage_dict.items()])
+                formatted_doc += f"## **Coverage Analysis**\n{coverage_str}\n\n"
+            else:
+                formatted_doc += f"## **Coverage Analysis**\n{coverage_dict}\n\n"
+                
+            if "accuracy_assessment" in crit_dict:
+                formatted_doc += f"## **Accuracy Assessment**\n{crit_dict.get('accuracy_assessment', 'N/A')}\n\n"
+            if "completeness_assessment" in crit_dict:
+                formatted_doc += f"## **Completeness Assessment**\n{crit_dict.get('completeness_assessment', 'N/A')}\n\n"
+            
+            strengths = crit_dict.get('strengths', [])
+            formatted_doc += "## **Strengths**\n" + ("\n".join([f"- {s}" for s in strengths]) if strengths else "- None noted.") + "\n\n"
+            
+            weaknesses = crit_dict.get('weaknesses', [])
+            formatted_doc += "## **Weaknesses**\n" + ("\n".join([f"- {w}" for w in weaknesses]) if weaknesses else "- None noted.") + "\n\n"
+            
+            missing = crit_dict.get('missing_research_areas', crit_dict.get('missing_areas', crit_dict.get('missing_topics', [])))
+            formatted_doc += "## **Missing Research Areas**\n" + ("\n".join([f"- {m}" for m in missing]) if missing else "- None noted.") + "\n\n"
+            
+            imp_priorities = crit_dict.get('improvement_priorities', {})
+            if isinstance(imp_priorities, dict) and imp_priorities:
+                priorities_list = []
+                for prio, items in imp_priorities.items():
+                    if isinstance(items, list):
+                        for item in items:
+                            priorities_list.append(f"- **{prio}**: {item}")
+                    elif isinstance(items, str):
+                        priorities_list.append(f"- **{prio}**: {items}")
+                formatted_doc += "## **Improvement Priorities**\n" + ("\n".join(priorities_list) if priorities_list else "- None noted.") + "\n\n"
+            else:
+                recommendations = crit_dict.get('improvement_recommendations', crit_dict.get('improvement_suggestions', []))
+                formatted_doc += "## **Improvement Recommendations**\n" + ("\n".join([f"- {i}" for i in recommendations]) if recommendations else "- None noted.") + "\n\n"
+            
+            formatted_doc += f"## **Confidence Level**\n{crit_dict.get('confidence_level', 'N/A')}\n\n"
+            formatted_doc += f"## **Final Verdict**\n{crit_dict.get('final_verdict', 'N/A')}\n\n"
+        else:
+            # Fallback to raw string representation of critique
+            formatted_doc += f"{critique_raw}\n\n"
+            
+        # 3. Full Research
+        formatted_doc += "## **🔬 Full Research Report**\n"
+        formatted_doc += f"{full_research}\n"
+        
+        return formatted_doc
+    else:
+        # Fallback if document doesn't match the format at all
+        return doc_text
+
 # Page configuration
 st.set_page_config(
     page_title="Nexus | Autonomous AI Researcher",
@@ -590,7 +905,11 @@ if getattr(st.session_state, 'running', False):
 
     # ── Render Output from Session State ─────────────────────────────────
     if st.session_state.executive_summary and st.session_state.critique_analysis is not None:
-        clean_summary  = st.session_state.executive_summary.replace("## Executive Summary", "").strip()
+        clean_summary = st.session_state.executive_summary
+        if clean_summary.startswith("## Executive Overview"):
+            clean_summary = clean_summary.replace("## Executive Overview", "", 1).strip()
+        elif clean_summary.startswith("## Executive Summary"):
+            clean_summary = clean_summary.replace("## Executive Summary", "", 1).strip()
         
         # Format the JSON dict into Markdown for the UI
         crit_dict = st.session_state.critique_analysis
@@ -599,12 +918,52 @@ if getattr(st.session_state, 'running', False):
             critique_is_error = True
         elif isinstance(crit_dict, dict):
             critique_is_error = False
-            clean_critique = f"**Overall Score:** {crit_dict.get('score', 'N/A')}/10\n\n"
-            clean_critique += "**Strengths:**\n" + "".join([f"- {s}\n" for s in crit_dict.get('strengths', [])]) + "\n"
-            clean_critique += "**Weaknesses:**\n" + "".join([f"- {w}\n" for w in crit_dict.get('weaknesses', [])]) + "\n"
-            clean_critique += "**Missing Topics:**\n" + "".join([f"- {m}\n" for m in crit_dict.get('missing_topics', [])]) + "\n"
-            clean_critique += "**Improvement Suggestions:**\n" + "".join([f"- {i}\n" for i in crit_dict.get('improvement_suggestions', [])]) + "\n"
-            clean_critique += "**Clarity Evaluation:**\n" + str(crit_dict.get('clarity_evaluation', ''))
+            clean_critique = f"## **Overall Score**\n{crit_dict.get('score', 'N/A')}/10\n\n"
+            
+            if "research_grade" in crit_dict:
+                clean_critique += f"## **Research Grade**\n{crit_dict.get('research_grade', 'N/A')}\n\n"
+            
+            if "report_quality_assessment" in crit_dict:
+                clean_critique += f"## **Report Quality Assessment**\n{crit_dict.get('report_quality_assessment', 'N/A')}\n\n"
+            
+            coverage_dict = crit_dict.get('coverage_analysis', {})
+            if isinstance(coverage_dict, dict):
+                coverage_str = "\n".join([f"- **{sec}**: {val}" for sec, val in coverage_dict.items()])
+                clean_critique += f"## **Coverage Analysis**\n{coverage_str}\n\n"
+            else:
+                clean_critique += f"## **Coverage Analysis**\n{coverage_dict}\n\n"
+                
+            if "accuracy_assessment" in crit_dict:
+                clean_critique += f"## **Accuracy Assessment**\n{crit_dict.get('accuracy_assessment', 'N/A')}\n\n"
+            if "completeness_assessment" in crit_dict:
+                clean_critique += f"## **Completeness Assessment**\n{crit_dict.get('completeness_assessment', 'N/A')}\n\n"
+            
+            strengths_list = crit_dict.get('strengths', [])
+            clean_critique += "## **Strengths**\n" + ("".join([f"- {s}\n" for s in strengths_list]) if strengths_list else "- None noted.\n") + "\n"
+            
+            weaknesses_list = crit_dict.get('weaknesses', [])
+            clean_critique += "## **Weaknesses**\n" + ("".join([f"- {w}\n" for w in weaknesses_list]) if weaknesses_list else "- None noted.\n") + "\n"
+            
+            missing_list = crit_dict.get('missing_research_areas', crit_dict.get('missing_areas', crit_dict.get('missing_topics', [])))
+            clean_critique += "## **Missing Research Areas**\n" + ("".join([f"- {m}\n" for m in missing_list]) if missing_list else "- None noted.\n") + "\n"
+            
+            imp_priorities = crit_dict.get('improvement_priorities', {})
+            if isinstance(imp_priorities, dict) and imp_priorities:
+                priorities_list = []
+                for prio, items in imp_priorities.items():
+                    if isinstance(items, list):
+                        for item in items:
+                            priorities_list.append(f"- **{prio}**: {item}")
+                    elif isinstance(items, str):
+                        priorities_list.append(f"- **{prio}**: {items}")
+                priorities_str = "\n".join(priorities_list) if priorities_list else "- None noted."
+                clean_critique += f"## **Improvement Priorities**\n{priorities_str}\n\n"
+            else:
+                suggestions_list = crit_dict.get('improvement_recommendations', crit_dict.get('improvement_suggestions', []))
+                clean_critique += "## **Improvement Recommendations**\n" + ("".join([f"- {i}\n" for i in suggestions_list]) if suggestions_list else "- None noted.\n") + "\n"
+            
+            clean_critique += f"## **Confidence Level**\n{crit_dict.get('confidence_level', 'N/A')}\n\n"
+            clean_critique += f"## **Final Verdict**\n{crit_dict.get('final_verdict', 'N/A')}"
         else:
             clean_critique = str(crit_dict)
             critique_is_error = clean_critique.startswith("⚠️")
@@ -944,7 +1303,7 @@ if getattr(st.session_state, 'running', False):
                             st.progress(min(conf_val, 1.0))
 
                             # Full stored memory content
-                            st.markdown(mem.get("document", ""))
+                            render_memory_tabs(mem.get("document", ""))
                 else:
                     st.markdown(
                         "<div style='display:flex;align-items:center;gap:12px;"
@@ -1184,7 +1543,7 @@ if getattr(st.session_state, 'running', False):
                 if critique_is_error:
                     st.warning(clean_critique)
                 else:
-                    st.markdown(clean_critique)
+                    render_premium_critique_ui(st.session_state.critique_analysis)
 
                 st.markdown("<br>", unsafe_allow_html=True)
 

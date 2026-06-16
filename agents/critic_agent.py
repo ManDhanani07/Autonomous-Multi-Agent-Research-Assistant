@@ -6,27 +6,55 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools.groq_client import ask_groq
 
-def build_critic_prompt(research_text: str, summary_text: str) -> str:
+def build_critic_prompt(research_text: str, summary_text: str, topic: str = "", previous_critique: dict = None) -> str:
     """
-    Constructs an advanced, structured prompt for the Critic Agent.
-    
-    Args:
-        research_text (str): The full research report to evaluate.
-        summary_text (str): The executive summary of the research.
+    Constructs an advanced, structured prompt for the Critic Agent with scoring rubrics,
+    topic-aware expected coverage checks, and upgraded JSON schema.
+    """
+    topic_context = ""
+    if topic:
+        topic_context = f"\nResearch Topic Requested: \"{topic}\"\n"
+
+    refinement_context = ""
+    if previous_critique:
+        prev_score = previous_critique.get("score", "N/A")
+        prev_weaknesses = "\n- ".join(previous_critique.get("weaknesses", []))
+        prev_missing = "\n- ".join(previous_critique.get("missing_research_areas", previous_critique.get("missing_areas", [])))
         
-    Returns:
-        str: The fully constructed prompt for the LLM.
-    """
+        refinement_context = f"""
+### REFINE EVALUATION CONTEXT (COMPARATIVE CRITIQUE) ###
+This report is a refined/optimized draft of a previous version that scored {prev_score}/10.
+The previous draft had the following identified gaps:
+Weaknesses to fix:
+- {prev_weaknesses}
+Missing topics to integrate:
+- {prev_missing}
+
+Compare the new report against the previous gaps. If the author successfully addressed the weaknesses and missing topics, you should reward their effort by increasing the score accordingly (moving it up into the 8.5 to 10.0 range if resolved with high research quality).
+"""
+
     prompt = f"""You are a Senior AI Research Analyst and Critic. Your objective is to rigorously evaluate an AI-generated research report and its executive summary.
-
+{topic_context}
 Your core responsibilities:
-1. Evaluate the depth, clarity, and completeness of the research.
-2. Identify missing topics, concepts, or industry applications.
-3. Find weak sections (e.g., shallow explanations, vague transitions).
-4. Suggest technical improvements for a stronger structure.
-5. Provide an objective score out of 10 (use floats, e.g., 7.5).
-6. Do NOT hallucinate. Be objective, highly critical, yet constructive.
+1. **Topic-Aware Expected Coverage Analysis**:
+   - Deduce the standard academic/industry subtopics that a comprehensive report on "{topic}" must cover. For example, if the topic is "Artificial Intelligence & Deep Learning", expected topics include Neural Networks, CNNs, RNNs, Transformers, Attention Mechanisms, LLMs, Reinforcement Learning, Optimization, and Applications.
+   - Contrast the report content and subtopics against this list. Every missing expected topic must be reported in `missing_research_areas`.
+2. **Specific Content Evaluation**:
+   - Evaluate the depth, clarity, and completeness of the research.
+   - Do NOT repeat or summarize the research content. Focus strictly on evaluating the research quality.
+   - All comments in `strengths`, `weaknesses`, `missing_research_areas`, and `improvement_priorities` must be derived from actual report content, referencing specific topics, methods, or sections. Avoid generic feedback or boilerplate phrases.
+3. **Scoring and Suitability Verdict**:
+   - Provide an objective overall score out of 10 (use floats, e.g., 7.5).
+   - Evaluate coverage of each major section individually (e.g. Introduction, Core Concepts, Technical Depth, Applications, Challenges, Future Outlook) and provide scores.
+   - Determine suitability of this report (students, professionals, researchers, publication-level work).
+4. Do NOT hallucinate. Be objective, highly critical, yet constructive.
 
+### SCORING RUBRICS ###
+- **9.0 - 10.0 (Exceptional)**: Technically complete, covers all critical aspects of the topic with outstanding depth and clear academic structure. No major gaps or missing topics.
+- **8.0 - 8.9 (Very Good)**: High quality, covers all main areas, but has minor suggestions for structural polishing or minor formatting improvements.
+- **7.0 - 7.9 (Good / Average)**: Solid effort, but has noticeable gaps (e.g. missing sections, shallow explanations of core principles, or lack of references).
+- **Below 7.0 (Needs Improvement)**: Major gaps in content, incorrect facts, or poorly structured.
+{refinement_context}
 Here is the Executive Summary:
 <summary>
 {summary_text}
@@ -42,23 +70,41 @@ Use the following exact schema:
 
 {{
   "score": <float between 1.0 and 10.0>,
+  "research_grade": "<string: Excellent / Very Good / Good / Fair / Poor>",
+  "coverage_analysis": {{
+    "Introduction": "<string: e.g. 9/10 - specific comment on introduction coverage>",
+    "Core Concepts": "<string: e.g. 8/10 - specific comment on core concepts coverage>",
+    "Technical Depth": "<string: e.g. 7/10 - specific comment on technical depth coverage>",
+    "Applications": "<string: e.g. 9/10 - specific comment on applications coverage>",
+    "Challenges": "<string: e.g. 8/10 - specific comment on challenges coverage>",
+    "Future Outlook": "<string: e.g. 8/10 - specific comment on future outlook coverage>"
+  }},
   "strengths": [
-    "<string>",
-    "<string>"
+    "<string strength 1 - referencing actual topics found in the report>",
+    "<string strength 2 - referencing actual topics found in the report>"
   ],
   "weaknesses": [
-    "<string>",
-    "<string>"
+    "<string weakness 1 - referencing actual missing depth or poor coverage found in the report>",
+    "<string weakness 2 - referencing actual missing depth or poor coverage found in the report>"
   ],
-  "missing_topics": [
-    "<string>",
-    "<string>"
+  "missing_research_areas": [
+    "<string missing expected subtopic 1>",
+    "<string missing expected subtopic 2>"
   ],
-  "improvement_suggestions": [
-    "<string>",
-    "<string>"
-  ],
-  "clarity_evaluation": "<string detailed analysis of readability and professional tone>"
+  "improvement_priorities": {{
+    "High Priority": [
+      "<string high priority recommendation 1>",
+      "<string high priority recommendation 2>"
+    ],
+    "Medium Priority": [
+      "<string medium priority recommendation 1>"
+    ],
+    "Low Priority": [
+      "<string low priority recommendation 1>"
+    ]
+  }},
+  "confidence_level": "<string: e.g. High / Medium / Low>",
+  "final_verdict": "<string final judgment explaining suitability for students, professionals, researchers, or publication-level work>"
 }}
 """
     return prompt
@@ -66,13 +112,15 @@ Use the following exact schema:
 import json
 import re
 
-def critique_research(research_text: str, summary_text: str) -> dict:
+def critique_research(research_text: str, summary_text: str, topic: str = "", previous_critique: dict = None) -> dict:
     """
     Main execution function for the Critic Agent.
     
     Args:
-        research_text (str): The extensive research data.
-        summary_text (str): The executive summary.
+        research_text     (str):  The extensive research data.
+        summary_text      (str):  The executive summary.
+        topic             (str):  The original research topic.
+        previous_critique (dict): Feedback dictionary from a previous loop iteration.
         
     Returns:
         dict: The structured JSON critique. If an error occurs, returns a dict with 'error'.
@@ -94,7 +142,7 @@ def critique_research(research_text: str, summary_text: str) -> dict:
         summary_text = summary_text[:MAX_SUMMARY_CHARS] + "\n\n[... truncated for token budget ...]"
     
     # 1. Construct the specialized prompt
-    prompt = build_critic_prompt(research_text, summary_text)
+    prompt = build_critic_prompt(research_text, summary_text, topic, previous_critique)
     
     # 2. Call the LLM via our centralized Groq client
     try:

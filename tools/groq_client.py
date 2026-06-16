@@ -23,11 +23,12 @@ load_dotenv(override=True)
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"
 FALLBACK_MODEL = "llama-3.1-8b-instant"    # Active lightweight fallback
 
-# Max tokens per completion (keeps daily spend predictable)
-MAX_COMPLETION_TOKENS = 1500
+# Max tokens per completion (large enough for a full 15-section report)
+MAX_COMPLETION_TOKENS = 4000
 
-# Hard character cap on prompts  (~3 000 tokens worth of text)
-PROMPT_CHAR_LIMIT = 12_000
+# Hard character cap on prompts (~7 000 tokens worth of text)
+# Raised from 12_000 to 28_000 so the full research body reaches the model
+PROMPT_CHAR_LIMIT = 28_000
 
 # Retry settings for transient / per-minute errors
 MAX_RETRIES = 3

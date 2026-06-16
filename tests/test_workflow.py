@@ -40,11 +40,16 @@ MOCK_SUMMARY = "## Executive Summary\nDistilled summary.\n## Key Findings\n* Poi
 # Mock critic result
 MOCK_CRITIQUE = {
     "score": 9.2,
+    "report_quality_assessment": "High quality presentation.",
+    "coverage_analysis": "Comprehensive topic coverage.",
+    "accuracy_assessment": "Technically accurate.",
+    "completeness_assessment": "Covers all key areas.",
     "strengths": ["Excellent detail"],
     "weaknesses": ["None"],
-    "missing_topics": ["None"],
-    "improvement_suggestions": ["Keep as is"],
-    "clarity_evaluation": "High clarity."
+    "missing_areas": ["None"],
+    "improvement_recommendations": ["Keep as is"],
+    "confidence_level": "High",
+    "final_verdict": "Publishable."
 }
 
 # Mock report generator result

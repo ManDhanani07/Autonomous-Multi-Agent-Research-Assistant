@@ -200,12 +200,14 @@ try:
                     
                     with tab_sum:
                         st.markdown(sections['summary'])
-                        
                     with tab_crit:
                         crit_data = parse_critique_dict(sections['critique'])
                         if crit_data and isinstance(crit_data, dict):
                             # Beautiful custom HTML/CSS for critique
                             score = crit_data.get('score', 'N/A')
+                            grade = crit_data.get('research_grade')
+                            
+                            grade_badge = f"<span style='background:rgba(251, 191, 36, 0.1); color:#fbbf24; border:1px solid rgba(251, 191, 36, 0.3); padding:4px 12px; border-radius:20px; font-size:0.85rem; font-weight:700;'>Grade: {grade}</span>" if grade else ""
                             
                             # Score badge/metric
                             st.markdown(f"""
@@ -213,16 +215,16 @@ try:
                                 <div style='display: flex; align-items: center; gap: 12px;'>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                                     <span style='font-size: 1.1rem; font-weight: 600; color: #ffffff;'>Critic Quality Assessment Score</span>
+                                    {grade_badge}
                                 </div>
                                 <div style='font-size: 1.8rem; font-weight: 700; color: #ef4444;'>{score} <span style='font-size: 1rem; color: #a1a1aa;'>/ 10</span></div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            # Strengths and Weaknesses side by side
+                                       # Strengths and Weaknesses side by side
                             col_str, col_weak = st.columns(2)
                             
                             with col_str:
-                                st.markdown("<p style='font-weight:600; color:#10b981; font-size:1.1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
+                                st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
                                 strengths = crit_data.get('strengths', [])
                                 if strengths:
                                     for s in strengths:
@@ -231,7 +233,7 @@ try:
                                     st.write("None identified.")
                                     
                             with col_weak:
-                                st.markdown("<p style='font-weight:600; color:#ef4444; font-size:1.1rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
+                                st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
                                 weaknesses = crit_data.get('weaknesses', [])
                                 if weaknesses:
                                     for w in weaknesses:
@@ -239,24 +241,79 @@ try:
                                 else:
                                     st.write("None identified.")
                             
-                            # Missing topics
-                            missing = crit_data.get('missing_topics', [])
+                            # Quality & Coverage Assessments
+                            q_assessment = crit_data.get('report_quality_assessment')
+                            c_analysis = crit_data.get('coverage_analysis')
+                            if q_assessment or c_analysis:
+                                col_q, col_c = st.columns(2)
+                                with col_q:
+                                    if q_assessment:
+                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
+                                        st.write(q_assessment)
+                                with col_c:
+                                    if c_analysis:
+                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
+                                        if isinstance(c_analysis, dict):
+                                            for sec, val in c_analysis.items():
+                                                st.markdown(f"<div style='font-size:0.9rem; margin-bottom:4px; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
+                                        else:
+                                            st.write(c_analysis)
+ 
+                            # Accuracy & Completeness Assessments
+                            a_assessment = crit_data.get('accuracy_assessment')
+                            comp_assessment = crit_data.get('completeness_assessment')
+                            if a_assessment or comp_assessment:
+                                col_a, col_comp = st.columns(2)
+                                with col_a:
+                                    if a_assessment:
+                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
+                                        st.write(a_assessment)
+                                with col_comp:
+                                    if comp_assessment:
+                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
+                                        st.write(comp_assessment)
+ 
+                            # Missing areas
+                            missing = crit_data.get('missing_research_areas', crit_data.get('missing_areas', crit_data.get('missing_topics', [])))
                             if missing:
-                                st.markdown("<p style='font-weight:600; color:#f59e0b; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg> Missing Topics & Gaps</p>", unsafe_allow_html=True)
+                                st.markdown("<p style='font-weight:700; color:#f59e0b; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg> Missing Research Areas & Gaps</p>", unsafe_allow_html=True)
                                 for m in missing:
                                     st.markdown(f"<div style='background:rgba(245, 158, 11, 0.04); border-left:3px solid #f59e0b; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{m}</div>", unsafe_allow_html=True)
                             
-                            # Suggestions
-                            suggestions = crit_data.get('improvement_suggestions', [])
-                            if suggestions:
-                                st.markdown("<p style='font-weight:600; color:#3b82f6; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Suggestions</p>", unsafe_allow_html=True)
+                            # Suggestions / Improvement Priorities
+                            imp_priorities = crit_data.get('improvement_priorities', {})
+                            suggestions = crit_data.get('improvement_recommendations', crit_data.get('improvement_suggestions', []))
+                            
+                            if imp_priorities and isinstance(imp_priorities, dict):
+                                st.markdown("<p style='font-weight:700; color:#3b82f6; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Priorities</p>", unsafe_allow_html=True)
+                                for prio, items in imp_priorities.items():
+                                    if items:
+                                        prio_color = "#ef4444" if "High" in prio else ("#f59e0b" if "Medium" in prio else "#3b82f6")
+                                        st.markdown(f"<p style='font-weight:800; color:{prio_color}; font-size:0.95rem; margin-top:8px; margin-bottom:4px;'>{prio}</p>", unsafe_allow_html=True)
+                                        if isinstance(items, list):
+                                            for item in items:
+                                                st.markdown(f"<div style='background:rgba(59, 130, 246, 0.03); border-left:3px solid {prio_color}; padding:6px 12px; border-radius:4px; margin-bottom:6px; color:#d4d4d8; font-size:0.95rem;'>{item}</div>", unsafe_allow_html=True)
+                                        else:
+                                            st.markdown(f"<div style='background:rgba(59, 130, 246, 0.03); border-left:3px solid {prio_color}; padding:6px 12px; border-radius:4px; margin-bottom:6px; color:#d4d4d8; font-size:0.95rem;'>{items}</div>", unsafe_allow_html=True)
+                            elif suggestions:
+                                st.markdown("<p style='font-weight:700; color:#3b82f6; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg> Improvement Recommendations</p>", unsafe_allow_html=True)
                                 for su in suggestions:
                                     st.markdown(f"<div style='background:rgba(59, 130, 246, 0.04); border-left:3px solid #3b82f6; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{su}</div>", unsafe_allow_html=True)
                             
-                            # Clarity
+                            # Confidence level & verdict
+                            conf = crit_data.get('confidence_level')
+                            verdict = crit_data.get('final_verdict')
+                            if conf:
+                                st.markdown(f"<p style='font-weight:700; color:#818cf8; font-size:1.1rem; margin-top:20px; margin-bottom:6px;'>Confidence Level</p>", unsafe_allow_html=True)
+                                st.write(conf)
+                            if verdict:
+                                st.markdown(f"<p style='font-weight:700; color:#fb7185; font-size:1.1rem; margin-top:20px; margin-bottom:6px;'>Final Verdict</p>", unsafe_allow_html=True)
+                                st.write(verdict)
+ 
+                            # Clarity (for older records)
                             clarity = crit_data.get('clarity_evaluation', '')
                             if clarity:
-                                st.markdown("<p style='font-weight:600; color:#ec4899; font-size:1.1rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ec4899' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg> Clarity & Tone Evaluation</p>", unsafe_allow_html=True)
+                                st.markdown("<p style='font-weight:700; color:#ec4899; font-size:1.15rem; margin-top:20px; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ec4899' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg> Clarity & Tone Evaluation (Legacy)</p>", unsafe_allow_html=True)
                                 st.markdown(f"<div style='background:rgba(236, 72, 153, 0.04); border-left:3px solid #ec4899; padding:12px; border-radius:4px; color:#d4d4d8; font-size:0.95rem; line-height:1.6;'>{clarity}</div>", unsafe_allow_html=True)
                         else:
                             st.markdown(sections['critique'])

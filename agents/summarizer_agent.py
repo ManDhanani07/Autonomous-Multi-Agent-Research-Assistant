@@ -20,14 +20,15 @@ def build_summarizer_prompt(research_text: str) -> str:
     Returns:
         str: The fully constructed prompt for the LLM.
     """
-    prompt = f"""You are an elite AI Summarization Agent. Your objective is to analyze a comprehensive research report and distill it into a highly concise, professional summary. 
+    prompt = f"""You are an elite AI Summarization Agent. Your objective is to analyze a comprehensive research report and distill it into a highly concise, professional Executive Summary Report. 
 
 Your core responsibilities:
 1. Analyze the full research report thoroughly.
-2. Extract the most critical insights.
+2. Extract the most critical, topic-specific insights. Every statement must be derived directly from the report content. Avoid generic phrases, boilerplate text, or superficial observations.
 3. Remove fluff, repetitive information, and unnecessary details.
-4. Preserve important technical context and accuracy.
+4. Preserve important technical context, specific terminology, and accuracy.
 5. Do NOT hallucinate or inject external information.
+6. The summary must feel like an executive briefing prepared for decision-makers.
 
 Here is the raw research text:
 <research_text>
@@ -36,24 +37,36 @@ Here is the raw research text:
 
 Please generate your summary STRICTLY following the format below. Use markdown headers:
 
-## Executive Summary
-[Provide a high-level, impactful 2-3 paragraph overview of the entire report.]
+## Executive Overview
+[Detail what was researched and why it matters, referencing specific technical concepts and the core scope of the study.]
 
-## Key Findings
-* [Bullet point 1]
-* [Bullet point 2]
-* [Bullet point 3]
+## Top Findings
+* [Discovery 1: Provide a highly specific, topic-aware discovery found in the report]
+* [Discovery 2: Provide a second highly specific, topic-aware discovery found in the report]
+* [Discovery 3: Provide a third highly specific, topic-aware discovery found in the report]
+* [Discovery 4: Provide a fourth highly specific, topic-aware discovery found in the report]
+* [Discovery 5: Provide a fifth highly specific, topic-aware discovery found in the report]
+(Note: You must output EXACTLY 5 bullet points here under Top Findings, each referencing specific topics and findings in the text.)
 
-## Important Technologies
-* [List the core tools, algorithms, or platforms mentioned]
+## Key Industry Impact
+[Detail the practical implications and business/scientific significance of these findings, linking them directly to real-world applications discussed in the report.]
 
-## Main Challenges
-* [Outline the primary obstacles, limitations, or risks discussed]
+## Critical Insights
+* [Detail the most important observations, emerging patterns, or unexpected findings found in the report.]
+* [Provide another critical insight or pattern.]
 
-## Future Opportunities
-* [Highlight future directions, implications, or areas for growth]
+## Major Challenges
+* [Crucial risk or technical limitation identified in the report.]
+* [Another crucial risk or technical limitation.]
 
-Ensure your tone is objective, professional, and beginner-friendly yet technically accurate. Only output the requested sections. Do not include any conversational filler text.
+## Future Outlook
+* [Predict future development or growth opportunity based on report trends.]
+* [Another future opportunity.]
+
+## Research Takeaway
+[Provide the single most important conclusion and action-oriented take-away from this research.]
+
+Ensure your tone is objective, professional, and executive-level yet technically accurate. Only output the requested sections. Do not include any conversational filler text.
 """
     return prompt
 

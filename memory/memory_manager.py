@@ -1,4 +1,5 @@
 import uuid
+import time
 from datetime import datetime
 from memory.chroma_store import store_research_memory, search_related_memories
 
@@ -181,10 +182,7 @@ def search_memory_context(query: str,
     Features hybrid search, reranking, metadata filtering, duplicate detection,
     semantic score boosting, dynamic thresholding, and latency tracking.
     """
-    import time
     start_time = time.time()
-    
-    print(f"[Memory Retrieval] Searching semantic memory in workspace '{workspace}' for: '{query}'")
     
     from memory.chroma_store import retrieve_similar_research
     

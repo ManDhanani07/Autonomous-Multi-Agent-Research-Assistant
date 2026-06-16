@@ -17,7 +17,7 @@ from agents.report_agent import generate_final_report
 from memory.memory_manager import save_research_to_memory, search_memory_context
 
 class Task:
-    def __init__(self, task_id: str, name: str, dependencies: List[str], run_func: Callable, max_retries: int = 3):
+    def __init__(self, task_id: str, name: str, dependencies: List[str], run_func: Callable, max_retries: int = 3, timeout: float = 600.0):
         self.task_id = task_id
         self.name = name
         self.dependencies = dependencies
@@ -30,6 +30,7 @@ class Task:
         self.duration = 0.0
         self.retry_count = 0
         self.max_retries = max_retries
+        self.timeout = timeout
 
 class AgentOrchestrator:
     def __init__(self, topic: str, workspace: str = "default", status_callback: Callable = None):
@@ -253,7 +254,8 @@ class AgentOrchestrator:
             None,
             critique_research,
             consolidated_text,
-            summary
+            summary,
+            self.topic
         )
         
         if "error" in critique:
@@ -311,7 +313,14 @@ class AgentOrchestrator:
         refined_summary = await loop.run_in_executor(None, summarize_research, refined_text)
         
         self._log("Self-Correction: Evaluating refined draft score...")
-        refined_critique = await loop.run_in_executor(None, critique_research, refined_text, refined_summary)
+        refined_critique = await loop.run_in_executor(
+            None,
+            critique_research,
+            refined_text,
+            refined_summary,
+            self.topic,
+            critique
+        )
         
         if "error" in refined_critique:
             self._log(f"Self-Correction Warning: Critic failed to evaluate refined draft. Error: {refined_critique['error']}. Reverting to validated v1 drafts.")
@@ -364,7 +373,7 @@ class AgentOrchestrator:
         summary = corr_result["refined_summary"]
         crit_dict = corr_result["refined_critique"]
         
-        # Combine all sources gathered from subtopics, deduplicated and limited to top 10
+        # Combine all sources gathered from subtopics, deduplicated
         sources = []
         seen_source_keys = set()
         for i in range(3):
@@ -377,9 +386,6 @@ class AgentOrchestrator:
                     if key and key not in seen_source_keys:
                         seen_source_keys.add(key)
                         sources.append(src)
-        sources = sources[:10]
-                    
-        critique_str = f"Score: {crit_dict.get('score', 'N/A')}/10\nStrengths: {crit_dict.get('strengths')}\nSuggestions: {crit_dict.get('improvement_suggestions')}"
         
         loop = asyncio.get_running_loop()
         final_report = await loop.run_in_executor(
@@ -387,7 +393,7 @@ class AgentOrchestrator:
             generate_final_report,
             text_body,
             summary,
-            critique_str,
+            crit_dict,
             sources
         )
         
@@ -495,7 +501,7 @@ class AgentOrchestrator:
         self._log(f"Agent Active: {task.name}")
         
         try:
-            task.result = await task.run_func(task)
+            task.result = await asyncio.wait_for(task.run_func(task), timeout=task.timeout)
             task.end_time = time.time()
             task.duration = round(task.end_time - task.start_time, 1)
             
@@ -505,6 +511,15 @@ class AgentOrchestrator:
                 
             self._log(f"Agent Completed: {task.name} ({task.duration}s)")
             
+        except asyncio.TimeoutError:
+            task.end_time = time.time()
+            task.duration = round(task.end_time - task.start_time, 1)
+            task.error = f"Task timed out after {task.timeout} seconds"
+            task.status = "FAILED"
+            self._log(f"Agent Failed: {task.name} ({task.duration}s). Error: Timed out after {task.timeout}s.")
+            
+            if task.retry_count >= task.max_retries:
+                self._log(f"Task '{task.task_id}' exceeded max retries. Mark pipeline failed.")
         except Exception as e:
             task.end_time = time.time()
             task.duration = round(task.end_time - task.start_time, 1)

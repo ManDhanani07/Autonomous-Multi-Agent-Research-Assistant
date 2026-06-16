@@ -93,8 +93,8 @@
         ],
         "table_count": 0,
         "reference_count": 3,
-        "summary": "This paper presents a deep learning approach using Graph Convolutional Networks (GCN) to predict molecular properties, specifically toxicity. The core objective is to develop an effective method for predicting molecular properties early in the drug discovery pipeline, reducing costs and accelerating development. The methodology involves utilizing GCN to learn molecular representations and predict properties. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging GCN, the approach can effectively capture complex molecular structures and relationships, enabling more accurate predictions. The paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a promising tool for the pharmaceutical industry.",
-        "timestamp": "2026-06-15T13:39:59.637982",
+        "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations from graph-structured data, enabling the prediction of molecular toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging GCN, this approach can effectively capture complex molecular relationships and structures, leading to more accurate predictions of molecular properties. Overall, this paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a promising tool for the pharmaceutical industry.",
+        "timestamp": "2026-06-16T12:52:07.582329",
         "workspace": "default"
     }
 ]

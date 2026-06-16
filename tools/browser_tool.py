@@ -180,7 +180,9 @@ async def scrape_article_async(url: str, timeout: int = 30000) -> str:
 
 def scrape_article(url: str) -> str:
     """
-    Synchronous wrapper to execute the async crawler in a standard event loop.
+    Synchronous scraper that attempts a fast HTTP requests call first.
+    If it fails, gets rate-limited, or returns a skeleton/empty content,
+    it falls back to loading the page dynamically via Playwright.
     
     Args:
         url (str): The target webpage URL.
@@ -188,6 +190,32 @@ def scrape_article(url: str) -> str:
     Returns:
         str: The extracted, cleaned article content.
     """
+    import requests
+    
+    if not url or not url.strip() or not url.startswith("http"):
+        logger.warning(f"Invalid URL provided to scrape: {url}")
+        return ""
+        
+    print(f"[*] Scraper: Attempting fast HTTP request for: {url}...")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=4)
+        if response.status_code == 200:
+            cleaned = clean_html_with_bs4(response.text)
+            if len(cleaned.strip()) > 1000:
+                print(f"[*] Scraper: Fast HTTP request succeeded ({len(cleaned)} chars) for: {url}")
+                return cleaned
+            else:
+                print(f"[*] Scraper: Fast HTTP request returned too little content ({len(cleaned)} chars). Falling back to Playwright...")
+        else:
+            print(f"[*] Scraper: Fast HTTP request returned status {response.status_code}. Falling back to Playwright...")
+    except Exception as e:
+        print(f"[*] Scraper: Fast HTTP request failed ({e}). Falling back to Playwright...")
+
+    # Fallback to headless Playwright
     try:
         return asyncio.run(scrape_article_async(url))
     except Exception as e:
