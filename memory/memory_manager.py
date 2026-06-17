@@ -88,7 +88,7 @@ def retrieve_related_research(new_topic: str, workspace: str = "default") -> str
 # ═══════════════════════════════════════════════════════════════════
 
 def save_research_to_memory(topic: str, full_research: str,
-                             summary: str, critique: str, workspace: str = "default"):
+                             summary: str, critique: str, workspace: str = "default", sources: list = None):
     """
     Enhanced memory save function with richer metadata.
 
@@ -104,6 +104,7 @@ def save_research_to_memory(topic: str, full_research: str,
         summary       (str): Executive summary from the Summarizer Agent.
         critique      (str): Quality critique from the Critic Agent.
         workspace     (str): The workspace to archive under.
+        sources       (list): List of sources containing full metadata.
     """
     print(f"[Memory Manager] Saving research session for: '{topic}' in workspace: '{workspace}'")
 
@@ -125,6 +126,10 @@ def save_research_to_memory(topic: str, full_research: str,
         "research_chars":   str(len(full_research)),
         "summary_chars":    str(len(summary)),
     }
+    if sources:
+        import json
+        metadata["sources_json"] = json.dumps(sources)
+
 
     from memory.chroma_store import add_research_memory
     add_research_memory(

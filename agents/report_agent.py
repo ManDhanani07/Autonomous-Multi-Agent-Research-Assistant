@@ -163,23 +163,57 @@ Present targeted, actionable recommendations for each of these audiences:
 - Research objectives achieved
 - Overall significance
 
-## 14. References & Source Summary
+## 14. References & Source Validation
+
 Academic Papers Reviewed: {academic_count}
 Web Sources Analyzed: {web_count}
 Research Databases Used: Semantic Scholar, arXiv, CrossRef
 
-### Cited References
-Using ONLY the sources provided below, render each as a numbered markdown clickable link in this exact format:
-[N]. [Title of Paper or Article](URL)
+### 14.1 Cited References
+Using the provided sources metadata below, format each source into a professional academic bibliography entry. For every source, you MUST explicitly include:
+* **Authors** (e.g. Vaswani, A. et al. or the designated organization/authors)
+* **Year** (e.g. 2017)
+* **Title** (e.g. Attention Is All You Need)
+* **Source Type** (Classified into: Academic Papers, Research Journals, Conference Papers, Government Sources, Industry Reports, Technical Documentation, Books, or Web Sources)
+* **Venue** (The Journal, Conference, Organization, or Site name)
+* **DOI** (Include the DOI if available in the metadata, otherwise write "N/A" or omit)
+* **URL** (A clickable markdown link of the title pointing to the source URL)
+* **Authority Score** (Grade the authority of the source out of 10, e.g. 9.8/10, based on publisher reputation and citations)
+* **Relevance Score** (Grade the relevance of the source out of 10, e.g. 9.5/10, based on how closely it aligns to this specific topic)
+* **Contribution** (A brief 1-2 sentence description explaining why it was selected, which section of the report used it, and what specific insight/information it contributed to the report)
 
-Sources to render as clickable links:
+Format each entry clearly like this example:
+[N] 
+* **Authors:** Vaswani, A. et al.
+* **Year:** 2017
+* **Title:** [Attention Is All You Need](URL)
+* **Source Type:** Conference Paper
+* **Venue:** NeurIPS
+* **DOI:** 10.48550/arXiv.1706.03762
+* **Authority Score:** 9.8/10
+* **Relevance Score:** 9.7/10
+* **Contribution:** Introduced the Transformer architecture used in Section 4.1 to contrast attention mechanisms with traditional recurrent neural networks.
+
+### 14.2 Source Reliability Analysis
+Group the sources into:
+* **High Reliability Sources**: Peer-reviewed articles, established academic journals, or government publications. Explain the reasoning (e.g., peer-review status, publisher reputation, citation metrics).
+* **Medium Reliability Sources**: Specialized tech blogs, mainstream industry reports, or documentation. Explain the reasoning.
+* **Low Reliability Sources**: General web articles or personal pages. Explain the reasoning.
+
+
+Below is the metadata of the sources to compile:
 {sources_str}
 
-IMPORTANT: Do NOT invent, modify, or fabricate any URLs. Every link must use the exact URL provided. Render ALL provided sources as clickable links.
+IMPORTANT: Do NOT invent, modify, or fabricate any URLs. You MUST render ALL provided sources as clickable links using the exact URLs provided.
 
 3. Ensure transitions between sections are smooth, tone is academic and objective, and formatting is clean.
-4. STRICT HEADING NUMBERING: Number the main H2 headings exactly as '## 1. Executive Summary', '## 2. Introduction', etc. NEVER write subheadings as '## 1.1', '## 1.0', or '## 2.0'. H2 headings must use only integers: 1 to 14.
-5. Do NOT include markdown code blocks wrapping the entire report. Output ONLY the compiled markdown report.
+4. CITATION ENFORCEMENT: Preserve, format, and align all in-text academic citations (e.g., "(Vaswani et al., 2017)") throughout the compiled report body, ensuring they map cleanly to the cited references listed in Section 14.1.
+5. STRICT HEADING NUMBERING: Number the main H2 headings exactly as '## 1. Executive Summary', '## 2. Introduction', etc. NEVER write subheadings as '## 1.1', '## 1.0', or '## 2.0'. H2 headings must use only integers: 1 to 14.
+6. Do NOT include markdown code blocks wrapping the entire report. Output ONLY the compiled markdown report.
+7. SECTION 14 STATS: You MUST include the following statistics immediately below the '## 14. References & Source Validation' heading before heading '### 14.1 Cited References':
+Academic Papers Reviewed: {academic_count}
+Web Sources Analyzed: {web_count}
+Research Databases Used: Semantic Scholar, arXiv, CrossRef
 """
 
 def generate_final_report(validated_research: str, summary: str, critique_str: any, sources: list) -> str:
@@ -228,9 +262,26 @@ def generate_final_report(validated_research: str, summary: str, critique_str: a
     sliced_sources = sources[:10]
     if sliced_sources:
         for idx, src in enumerate(sliced_sources, start=1):
-            title = src.get("title", f"Source {idx}")
+            title = src.get("title", "No Title")
             url = src.get("url", "#")
-            sources_str += f"{idx}. {title} ({url})\n"
+            authors = src.get("authors", [])
+            authors_str = ", ".join(authors) if isinstance(authors, list) else str(authors)
+            year = src.get("year", "N/A")
+            venue = src.get("venue", "N/A")
+            source_type = src.get("type", "academic" if src.get("source") in ["arXiv", "Semantic Scholar", "Crossref"] else "web")
+            doi = src.get("doi") or "N/A"
+            citations = src.get("citations", 0)
+            
+            sources_str += f"Source [{idx}]:\n"
+            sources_str += f"  Title: {title}\n"
+            sources_str += f"  URL: {url}\n"
+            sources_str += f"  Authors: {authors_str}\n"
+            sources_str += f"  Year: {year}\n"
+            sources_str += f"  Venue: {venue}\n"
+            sources_str += f"  Database/Source: {src.get('source', 'Unknown')}\n"
+            sources_str += f"  Type: {source_type}\n"
+            sources_str += f"  DOI: {doi}\n"
+            sources_str += f"  Citations: {citations}\n\n"
     else:
         sources_str = "No source references available."
         

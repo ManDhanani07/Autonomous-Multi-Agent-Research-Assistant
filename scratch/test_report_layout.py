@@ -74,8 +74,7 @@ def main():
         "## 11. Key Insights & Strategic Findings",
         "## 12. Expert Recommendations",
         "## 13. Conclusion",
-        "## 14. Critic Evaluation Summary",
-        "## 15. References & Source Summary"
+        "## 14. References & Source Validation"
     ]
     
     success = True
@@ -92,49 +91,30 @@ def main():
             success = False
             print(f"  [FAIL] Section {idx} missing or malformed! Expected prefix: '{expected}'")
             
-    # Check Section 14 content (Critic Evaluation Summary)
-    print("\nChecking Section 14 content (Critic Evaluation Summary):")
+    # Check Section 14 content (References & Source Validation)
+    print("\nChecking Section 14 content (References & Source Validation):")
     sec14_idx = report.lower().find("## 14.")
-    sec15_idx = report.lower().find("## 15.")
-    if sec14_idx != -1 and sec15_idx != -1:
-        sec14_content = report.lower()[sec14_idx:sec15_idx]
-        print(f"Score 8.8 in Section 14: {'8.8' in sec14_content}")
-        print(f"Strengths in Section 14: {'clear structure' in sec14_content}")
-        print(f"Research Grade in Section 14: {'research grade' in sec14_content}")
-        print(f"Coverage Analysis in Section 14: {'coverage analysis' in sec14_content}")
-        print(f"Weaknesses in Section 14: {'weaknesses' in sec14_content}")
-        print(f"Missing Research Areas in Section 14: {'missing research areas' in sec14_content}")
-        print(f"Improvement Priorities in Section 14: {'improvement priorities' in sec14_content}")
-        print(f"Confidence Level in Section 14: {'confidence level' in sec14_content}")
-        print(f"Final Verdict in Section 14: {'final verdict' in sec14_content}")
+    if sec14_idx != -1:
+        sec14_content = report[sec14_idx:]
+        print(f"Academic Count '2' in Section 14: {'2' in sec14_content}")
+        print(f"Web Count '1' in Section 14: {'1' in sec14_content}")
+        print(f"Semantic Scholar database: {'Semantic Scholar' in sec14_content}")
+        print(f"arXiv database: {'arXiv' in sec14_content}")
+        print(f"CrossRef database: {'CrossRef' in sec14_content}")
+        print(f"Source Reliability Analysis: {'reliability' in sec14_content.lower()}")
         
-        required_words = ['8.8', 'clear structure', 'research grade', 'coverage analysis',
-                          'weaknesses', 'missing research areas', 'improvement priorities', 'confidence level', 'final verdict']
-        if not all(word in sec14_content for word in required_words):
+        required_words = ['2', '1', 'semantic scholar', 'arxiv', 'reliability']
+        if not all(word in sec14_content.lower() for word in required_words):
             success = False
             print("  [FAIL] Section 14 content verification failed.")
+        else:
+            print("  [PASS] Section 14 content verification successful.")
     else:
         success = False
-        print("  [FAIL] Heading 14 or 15 not found to check content.")
-        
-    # Check Section 15 content (References)
-    print("\nChecking Section 15 content (References & Source Summary):")
-    if sec15_idx != -1:
-        sec15_content = report[sec15_idx:]
-        print(f"Academic Count '2' in Section 15: {'2' in sec15_content}")
-        print(f"Web Count '1' in Section 15: {'1' in sec15_content}")
-        print(f"Semantic Scholar database: {'Semantic Scholar' in sec15_content}")
-        print(f"arXiv database: {'arXiv' in sec15_content}")
-        print(f"CrossRef database: {'CrossRef' in sec15_content}")
-        if '2' not in sec15_content or '1' not in sec15_content:
-            success = False
-            print("  [FAIL] Section 15 count verification failed.")
-    else:
-        success = False
-        print("  [FAIL] Heading 15 not found to check content.")
+        print("  [FAIL] Heading 14 not found to check content.")
 
     if success:
-        print("\nOVERALL VERDICT: SUCCESS (All 15 sections verified successfully)")
+        print("\nOVERALL VERDICT: SUCCESS (All 14 sections verified successfully)")
         sys.exit(0)
     else:
         print("\nOVERALL VERDICT: FAILED")

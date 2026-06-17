@@ -109,25 +109,7 @@ try:
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.markdown("""
-        <style>
-        /* Reset global tab styles for the memory bank page to use clean emojis instead */
-        div[data-testid="stTabBar"] button[role="tab"] p::before,
-        div[data-testid="stTabBar"] button[role="tab"] span::before,
-        div[data-testid="stTabs"] button[role="tab"] p::before,
-        div[data-testid="stTabs"] button[role="tab"] span::before {
-            display: none !important;
-            content: none !important;
-            background-image: none !important;
-        }
-        div[data-testid="stTabBar"] button[role="tab"] p,
-        div[data-testid="stTabBar"] button[role="tab"] span,
-        div[data-testid="stTabs"] button[role="tab"] p,
-        div[data-testid="stTabs"] button[role="tab"] span {
-            padding-left: 0px !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        pass # Global tab styles are now used to show premium Lucide icons instead of emojis
         st.markdown(f"<p style='color: #34d399; font-weight: 600; margin-bottom: 20px;'>{len(memories)} Encoded Memories Found</p>", unsafe_allow_html=True)
         
         for mem in memories:
@@ -193,9 +175,9 @@ try:
                 else:
                     # Render structured tabs
                     tab_sum, tab_crit, tab_res = st.tabs([
-                        "📝 Executive Summary",
-                        "🧐 Critic Analysis",
-                        "🔬 Full Research Report"
+                        "Executive Summary",
+                        "Critic Analysis",
+                        "Full Research Report"
                     ])
                     
                     with tab_sum:
@@ -220,58 +202,46 @@ try:
                                 <div style='font-size: 1.8rem; font-weight: 700; color: #ef4444;'>{score} <span style='font-size: 1rem; color: #a1a1aa;'>/ 10</span></div>
                             </div>
                             """, unsafe_allow_html=True)
-                                       # Strengths and Weaknesses side by side
-                            col_str, col_weak = st.columns(2)
-                            
-                            with col_str:
-                                st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
-                                strengths = crit_data.get('strengths', [])
-                                if strengths:
-                                    for s in strengths:
-                                        st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
-                                else:
-                                    st.write("None identified.")
-                                    
-                            with col_weak:
-                                st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
-                                weaknesses = crit_data.get('weaknesses', [])
-                                if weaknesses:
-                                    for w in weaknesses:
-                                        st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
-                                else:
-                                    st.write("None identified.")
+                                       # Strengths and Weaknesses vertical list
+                            st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
+                            strengths = crit_data.get('strengths', [])
+                            if strengths:
+                                for s in strengths:
+                                    st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
+                            else:
+                                st.write("None identified.")
+                                
+                            st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
+                            weaknesses = crit_data.get('weaknesses', [])
+                            if weaknesses:
+                                for w in weaknesses:
+                                    st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
+                            else:
+                                st.write("None identified.")
                             
                             # Quality & Coverage Assessments
                             q_assessment = crit_data.get('report_quality_assessment')
                             c_analysis = crit_data.get('coverage_analysis')
-                            if q_assessment or c_analysis:
-                                col_q, col_c = st.columns(2)
-                                with col_q:
-                                    if q_assessment:
-                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
-                                        st.write(q_assessment)
-                                with col_c:
-                                    if c_analysis:
-                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
-                                        if isinstance(c_analysis, dict):
-                                            for sec, val in c_analysis.items():
-                                                st.markdown(f"<div style='font-size:0.9rem; margin-bottom:4px; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
-                                        else:
-                                            st.write(c_analysis)
+                            if q_assessment:
+                                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
+                                st.write(q_assessment)
+                            if c_analysis:
+                                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
+                                if isinstance(c_analysis, dict):
+                                    for sec, val in c_analysis.items():
+                                        st.markdown(f"<div style='font-size:0.95rem; margin-bottom:12px; line-height:1.6; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
+                                else:
+                                    st.write(c_analysis)
  
                             # Accuracy & Completeness Assessments
                             a_assessment = crit_data.get('accuracy_assessment')
                             comp_assessment = crit_data.get('completeness_assessment')
-                            if a_assessment or comp_assessment:
-                                col_a, col_comp = st.columns(2)
-                                with col_a:
-                                    if a_assessment:
-                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
-                                        st.write(a_assessment)
-                                with col_comp:
-                                    if comp_assessment:
-                                        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
-                                        st.write(comp_assessment)
+                            if a_assessment:
+                                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
+                                st.write(a_assessment)
+                            if comp_assessment:
+                                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
+                                st.write(comp_assessment)
  
                             # Missing areas
                             missing = crit_data.get('missing_research_areas', crit_data.get('missing_areas', crit_data.get('missing_topics', [])))
@@ -320,6 +290,27 @@ try:
                             
                     with tab_res:
                         st.markdown(sections['full_research'])
+                        
+                        # Add academic citation export module if sources are stored
+                        sources_json = meta.get("sources_json")
+                        if sources_json:
+                            try:
+                                import json
+                                from tools.citation_formatter import format_citations
+                                raw_sources = json.loads(sources_json)
+                                if raw_sources:
+                                    st.markdown("---")
+                                    st.markdown("#### 🎓 Academic Export & Bibliography Formatter")
+                                    style = st.selectbox(
+                                        "Select Citation Style",
+                                        options=["Default", "APA", "IEEE", "Harvard", "BibTeX", "LaTeX Integration"],
+                                        key=f"bank_cite_style_{mem.get('id', 'temp')}"
+                                    )
+                                    if style != "Default":
+                                        formatted_citations = format_citations(raw_sources, style)
+                                        st.code(formatted_citations, language="tex" if style in ["BibTeX", "LaTeX Integration"] else "markdown")
+                            except Exception as e:
+                                pass
 
 except Exception as e:
     st.error("Failed to connect to ChromaDB Vector Store. Ensure dependencies are installed and the database isn't locked.")

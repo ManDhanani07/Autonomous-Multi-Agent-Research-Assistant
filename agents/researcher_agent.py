@@ -277,6 +277,13 @@ Generate targeted, actionable recommendations for each audience. Recommendations
 {references_block}
 """
     prompt += f"""
+=== IN-TEXT CITATIONS DIRECTIVE ===
+You MUST insert academic-style in-text citations in the format "(Author et al., Year)" or "(Author, Year)" throughout your report body wherever you make factual claims, present technical findings, use statistics, or draw conclusions based on the provided papers/web results.
+Examples:
+- "Transformer architectures revolutionized NLP (Vaswani et al., 2017)."
+- "Large language models demonstrate emergent reasoning abilities (Brown et al., 2020)."
+Do not generate unsupported factual claims. If the citation metadata is available in the retrieved literature/sources, use it!
+
 === STRICT OUTPUT QUALITY CONSTRAINTS ===
 - FORBIDDEN: Generic statements like "X is widely used", "X is growing rapidly", "future is promising".
 - FORBIDDEN: Textbook definitions without accompanying analysis.
@@ -442,13 +449,23 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
                 import urllib.parse
                 safe_filename = urllib.parse.quote(file_name)
                 pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
-                source_urls.append({"title": f"[PDF Library] {title}", "url": pdf_url})
+                source_urls.append({
+                    "title": f"[PDF Library] {title}",
+                    "url": pdf_url,
+                    "authors": meta.get("authors", ["Unknown Author"]),
+                    "year": meta.get("year", "2026"),
+                    "venue": meta.get("journal", meta.get("publisher", "PDF Upload")),
+                    "source": "PDF Library",
+                    "type": "pdf",
+                    "doi": meta.get("doi", "N/A")
+                })
 
         for p in retrieved_papers:
             url = p.get("url", "")
-            title = p.get("title", url)
             if url and url.startswith("http"):
-                source_urls.append({"title": title, "url": url})
+                p_copy = dict(p)
+                p_copy["type"] = "academic"
+                source_urls.append(p_copy)
                 
         # ── STEP 3: Assemble prompt with academic context ─────────────────────
         print(f"[*] Compiling academic research parameters for: {topic}...")
@@ -484,13 +501,31 @@ def generate_research(topic: str, plan: dict = None, workspace: str = "default")
                 import urllib.parse
                 safe_filename = urllib.parse.quote(file_name)
                 pdf_url = f"/app/static/uploaded_pdfs/{safe_filename}"
-                source_urls.append({"title": f"[PDF Library] {title}", "url": pdf_url})
+                source_urls.append({
+                    "title": f"[PDF Library] {title}",
+                    "url": pdf_url,
+                    "authors": meta.get("authors", ["Unknown Author"]),
+                    "year": meta.get("year", "2026"),
+                    "venue": meta.get("journal", meta.get("publisher", "PDF Upload")),
+                    "source": "PDF Library",
+                    "type": "pdf",
+                    "doi": meta.get("doi", "N/A")
+                })
 
         for r in (web_results or []):
             url   = r.get("url", "")
             title = r.get("title", url)
             if url and url.startswith("http"):
-                source_urls.append({"title": title, "url": url})
+                source_urls.append({
+                    "title": title,
+                    "url": url,
+                    "authors": [r.get("author", "Web Source")],
+                    "year": r.get("year", "2026"),
+                    "venue": r.get("site", "Web Search"),
+                    "source": "Web Search",
+                    "type": "web",
+                    "doi": "N/A"
+                })
                 
         # Fast scrape: only 1 URL to keep latency low in the fallback path
         deep_context = ""
@@ -677,7 +712,8 @@ Improvement priorities to apply:
    ## 12. References (if sources available)
 6. FORBIDDEN: Generic statements, textbook definitions without analysis, vague future predictions.
 7. REQUIRED: Every major claim must include causation reasoning — not just what, but WHY.
-8. Output ONLY the improved markdown report. Do not explain your changes.
+8. REQUIRED: Preserve, align, and consistently use academic in-text citations in the format "(Author et al., Year)" or "(Author, Year)" throughout the report body wherever factual claims, statistics, or findings from the literature are presented.
+9. Output ONLY the improved markdown report. Do not explain your changes.
 """
     return prompt.strip()
 

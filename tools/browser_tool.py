@@ -121,14 +121,14 @@ def clean_html_with_bs4(html_content: str) -> str:
     # Return double-spaced paragraphs for clear readability formatting
     return "\n\n".join(extracted_text).strip()
 
-async def scrape_article_async(url: str, timeout: int = 30000) -> str:
+async def scrape_article_async(url: str, timeout: int = 12000) -> str:
     """
     Asynchronously opens a webpage using Playwright, waits dynamically for scripts
     and elements to load, extracts raw HTML, and returns the cleaned text.
     
     Args:
         url (str): The target webpage URL.
-        timeout (int): Navigation timeout in milliseconds (default 30 seconds).
+        timeout (int): Navigation timeout in milliseconds (default 12 seconds).
         
     Returns:
         str: Structured, cleaned article content.
@@ -140,7 +140,18 @@ async def scrape_article_async(url: str, timeout: int = 30000) -> str:
     print(f"[*] Browser Automation: Launching headless browser for: {url}...")
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-setuid-sandbox",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                    "--disable-extensions"
+                ]
+            )
             
             # Setup emulated context
             context = await browser.new_context(
@@ -154,11 +165,11 @@ async def scrape_article_async(url: str, timeout: int = 30000) -> str:
             await page.goto(url, timeout=timeout, wait_until="domcontentloaded")
             
             # 2. Dynamic wait handling: Wait for body tag to render
-            await page.wait_for_selector("body", timeout=5000)
+            await page.wait_for_selector("body", timeout=2500)
             
-            # 3. Wait for network connections to idle (optional, capped at 5 seconds)
+            # 3. Wait for network connections to idle (optional, capped at 1.5 seconds)
             try:
-                await page.wait_for_load_state("networkidle", timeout=5000)
+                await page.wait_for_load_state("networkidle", timeout=1500)
             except Exception:
                 logger.debug("Network idle state timeout reached; continuing execution.")
 
@@ -198,7 +209,10 @@ def scrape_article(url: str) -> str:
         
     print(f"[*] Scraper: Attempting fast HTTP request for: {url}...")
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 (HTML/CSS, like Gecko) Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Upgrade-Insecure-Requests": "1"
     }
     
     try:

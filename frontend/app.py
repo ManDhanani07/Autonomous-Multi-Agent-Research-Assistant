@@ -108,58 +108,46 @@ def render_premium_critique_ui(crit_dict: dict):
     </div>
     """, unsafe_allow_html=True)
     
-    # Strengths and Weaknesses side by side
-    col_str, col_weak = st.columns(2)
-    
-    with col_str:
-        st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
-        strengths = crit_dict.get('strengths', [])
-        if strengths:
-            for s in strengths:
-                st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
-        else:
-            st.write("None identified.")
-            
-    with col_weak:
-        st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
-        weaknesses = crit_dict.get('weaknesses', [])
-        if weaknesses:
-            for w in weaknesses:
-                st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
-        else:
-            st.write("None identified.")
+    # Strengths and Weaknesses vertical list
+    st.markdown("<p style='font-weight:700; color:#10b981; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#10b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg> Strengths</p>", unsafe_allow_html=True)
+    strengths = crit_dict.get('strengths', [])
+    if strengths:
+        for s in strengths:
+            st.markdown(f"<div style='background:rgba(16, 185, 129, 0.04); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{s}</div>", unsafe_allow_html=True)
+    else:
+        st.write("None identified.")
+        
+    st.markdown("<p style='font-weight:700; color:#ef4444; font-size:1.15rem; margin-bottom:12px; display:flex; align-items:center; gap:8px;'><svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg> Weaknesses</p>", unsafe_allow_html=True)
+    weaknesses = crit_dict.get('weaknesses', [])
+    if weaknesses:
+        for w in weaknesses:
+            st.markdown(f"<div style='background:rgba(239, 68, 68, 0.04); border-left:3px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:8px; color:#d4d4d8; font-size:0.95rem;'>{w}</div>", unsafe_allow_html=True)
+    else:
+        st.write("None identified.")
     
     # Quality & Coverage Assessments
     q_assessment = crit_dict.get('report_quality_assessment')
     c_analysis = crit_dict.get('coverage_analysis')
-    if q_assessment or c_analysis:
-        col_q, col_c = st.columns(2)
-        with col_q:
-            if q_assessment:
-                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
-                st.write(q_assessment)
-        with col_c:
-            if c_analysis:
-                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
-                if isinstance(c_analysis, dict):
-                    for sec, val in c_analysis.items():
-                        st.markdown(f"<div style='font-size:0.9rem; margin-bottom:4px; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
-                else:
-                    st.write(c_analysis)
+    if q_assessment:
+        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Report Quality Assessment</p>", unsafe_allow_html=True)
+        st.write(q_assessment)
+    if c_analysis:
+        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Coverage Analysis</p>", unsafe_allow_html=True)
+        if isinstance(c_analysis, dict):
+            for sec, val in c_analysis.items():
+                st.markdown(f"<div style='font-size:0.95rem; margin-bottom:12px; line-height:1.6; color:#d4d4d8;'><strong>{sec}</strong>: {val}</div>", unsafe_allow_html=True)
+        else:
+            st.write(c_analysis)
 
     # Accuracy & Completeness Assessments
     a_assessment = crit_dict.get('accuracy_assessment')
     comp_assessment = crit_dict.get('completeness_assessment')
-    if a_assessment or comp_assessment:
-        col_a, col_comp = st.columns(2)
-        with col_a:
-            if a_assessment:
-                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
-                st.write(a_assessment)
-        with col_comp:
-            if comp_assessment:
-                st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
-                st.write(comp_assessment)
+    if a_assessment:
+        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Accuracy Assessment</p>", unsafe_allow_html=True)
+        st.write(a_assessment)
+    if comp_assessment:
+        st.markdown("<p style='font-weight:700; color:#a5b4fc; font-size:1.1rem; margin-top:10px; margin-bottom:6px;'>Completeness Assessment</p>", unsafe_allow_html=True)
+        st.write(comp_assessment)
 
     # Missing areas
     missing = crit_dict.get('missing_research_areas', crit_dict.get('missing_areas', crit_dict.get('missing_topics', [])))
@@ -198,22 +186,25 @@ def render_premium_critique_ui(crit_dict: dict):
         st.markdown(f"<p style='font-weight:700; color:#fb7185; font-size:1.1rem; margin-top:20px; margin-bottom:6px;'>Final Verdict</p>", unsafe_allow_html=True)
         st.write(verdict)
 
-def render_memory_tabs(doc_text):
+def render_memory_tabs(doc_text, metadata=None):
     sections = parse_memory_document(doc_text)
     if 'raw' in sections:
         st.markdown(sections['raw'])
     else:
         # Render clean tabs
         tab_sum, tab_crit, tab_res = st.tabs([
-            "📝 Executive Summary",
-            "🧐 Critic Analysis",
-            "🔬 Full Research Report"
+            "Executive Summary",
+            "Critic Analysis",
+            "Full Research Report"
         ])
         with tab_sum:
             st.markdown(
                 f"""
                 <div style='padding: 12px 16px; background: rgba(129, 140, 248, 0.05); border-left: 4px solid #818cf8; border-radius: 6px; margin-bottom: 16px;'>
-                    <h4 style='margin: 0; font-weight: 700; color: #818cf8; font-size: 1.15rem;'>📝 Executive Summary</h4>
+                    <h4 style='margin: 0; font-weight: 700; color: #818cf8; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                        Executive Summary
+                    </h4>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -223,7 +214,10 @@ def render_memory_tabs(doc_text):
             st.markdown(
                 f"""
                 <div style='padding: 12px 16px; background: rgba(251, 191, 36, 0.05); border-left: 4px solid #fbbf24; border-radius: 6px; margin-bottom: 16px;'>
-                    <h4 style='margin: 0; font-weight: 700; color: #fbbf24; font-size: 1.15rem;'>🧐 AI Critic Analysis</h4>
+                    <h4 style='margin: 0; font-weight: 700; color: #fbbf24; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+                        AI Critic Analysis
+                    </h4>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -237,12 +231,35 @@ def render_memory_tabs(doc_text):
             st.markdown(
                 f"""
                 <div style='padding: 12px 16px; background: rgba(52, 211, 153, 0.05); border-left: 4px solid #34d399; border-radius: 6px; margin-bottom: 16px;'>
-                    <h4 style='margin: 0; font-weight: 700; color: #34d399; font-size: 1.15rem;'>🔬 Full Research Report</h4>
+                    <h4 style='margin: 0; font-weight: 700; color: #34d399; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;'>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0-14 0"/><path d="M9 14h2"/><path d="M9 12a3 3 0 0 1-3-3V6h6v3a3 3 0 0 1-3 3Z"/><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></svg>
+                        Full Research Report
+                    </h4>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
             st.markdown(sections['full_research'])
+            
+            # Interactive Bibliography Export block
+            if metadata and isinstance(metadata, dict) and "sources_json" in metadata:
+                try:
+                    import json
+                    from tools.citation_formatter import format_citations
+                    raw_sources = json.loads(metadata["sources_json"])
+                    if raw_sources:
+                        st.markdown("---")
+                        st.markdown("#### 🎓 Academic Export & Bibliography Formatter")
+                        style = st.selectbox(
+                            "Select Citation Style",
+                            options=["Default", "APA", "IEEE", "Harvard", "BibTeX", "LaTeX Integration"],
+                            key=f"app_cite_style_{metadata.get('timestamp', 'temp')}"
+                        )
+                        if style != "Default":
+                            formatted_citations = format_citations(raw_sources, style)
+                            st.code(formatted_citations, language="tex" if style in ["BibTeX", "LaTeX Integration"] else "markdown")
+                except Exception as e:
+                    pass
 
 def format_memory_document(doc_text):
     import ast
@@ -1303,7 +1320,7 @@ if getattr(st.session_state, 'running', False):
                             st.progress(min(conf_val, 1.0))
 
                             # Full stored memory content
-                            render_memory_tabs(mem.get("document", ""))
+                            render_memory_tabs(mem.get("document", ""), mem.get("metadata", {}))
                 else:
                     st.markdown(
                         "<div style='display:flex;align-items:center;gap:12px;"

@@ -409,6 +409,20 @@ class AgentOrchestrator:
         crit_dict = corr_result["refined_critique"]
         
         crit_str = str(crit_dict)
+
+        # Gather deduplicated list of sources containing full metadata
+        sources = []
+        seen_source_keys = set()
+        for i in range(3):
+            res_task = self.tasks[f"researcher_{i}"]
+            if res_task.result:
+                for src in res_task.result.get("sources", []):
+                    url = src.get("url", "")
+                    title = src.get("title", "")
+                    key = url if url else title
+                    if key and key not in seen_source_keys:
+                        seen_source_keys.add(key)
+                        sources.append(src)
         
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
@@ -418,7 +432,8 @@ class AgentOrchestrator:
             final_report,
             summary,
             crit_str,
-            self.workspace
+            self.workspace,
+            sources
         )
         
         self._log("Memory Storage: Successfully archived report in long-term memory.")

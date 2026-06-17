@@ -137,11 +137,16 @@ p, h1, h2, h3, h4, h5, h6, li, a, span, div, button, input {
 /* AI Memory Bank Icon (Green database cylinder) */
 [data-testid="stSidebarNav"] a[href*="Memory" i] span::before,
 [data-testid="stSidebarNav"] a[href*="Bank" i] span::before {
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxlbGxpcHNlIGN4PSIxMiIgY3k9IjUiIHJ4PSI5IiByeT0iMyIvPjxwYXRoIGQ9Ik0zIDVWMTlBOSAzIDAgMCAwIDIxIDE5VjUiLz48cGF0aCBkPSJNMyAxMkE5IDMgMCAwIDAgMjEgMTIiLz48L3N2Zz4=') !important;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxlbGxpcHNlIGN4PSIxMiIgY3k9IjUiIHJ4PSI5IiByeT0iMyIvPjxwYXRoIGQ9Ik0zIDVWMTlBOSAzIDAgMCAwIDIxIDE5VjUiLz48cGF0aCBkPSJNMyAxMkE5IDMgMCAwIDAgMjEgMTIiLz48L3N2Zz4=') !important;
+}
+/* PDF Chat Icon (Orange MessageSquare) */
+[data-testid="stSidebarNav"] a[href*="PDF" i] span::before,
+[data-testid="stSidebarNav"] a[href*="Chat" i] span::before {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmYjkyM2MiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMSAxNWEyIDIgMCAwIDEtMiAySDdsLTQgNFY1YTIgMiAwIDAgMSAyLTJoMTRhMiAyIDAgMCAxIDIgMnoiLz48L3N2Zz4=') !important;
 }
 /* Settings Icon (Red cog settings) */
 [data-testid="stSidebarNav"] a[href*="Settings" i] span::before {
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xMi4yMiAyaC0uNDRhMiAyIDAgMCAwLTIgMnYuMThhMiAyIDAgMCAxLTEgMS43M2wtLjQzLjI1YTIgMiAwIDAgMS0yIDBsLS4xNS0uMDhhMiAyIDAgMCAwLTIuNzMuNzNsLS4yMi4zOGEyIDIgMCAwIDAgLjczIDIuNzNsLjE1LjFhMiAyIDAgMCAxIDEgMS43MnYuNTFhMiAyIDAgMCAxLTEgMS43NGwtLjE1LjA5YTIgMiAwIDAgMC0uNzMgMi43M2wuMjIuMzhhMiAyIDAgMCAwIDIuNzMuNzNsLjE1LS4wOGEyIDIgMCAxIDEgMiAwbC40My4yNWEyIDIgMCAwIDEgMSAxLjczVjIwYTIgMiAwIDAgMCAyIDJoLjQ0YTIgMiAwIDAgMCAyLTJ2LS4xOGEyIDIgMCAwIDEgMS0xLjczbC40My0uMjVhMiAyIDAgMCAxIDIgMGwuMTUuMDhhMiAyIDAgMCAwIDIuNzMtLjczbC4yMi0uMzlhMiAyIDAgMCAwLS43My0yLjczbC0uMTUtLjA4YTIgMiAwIDAgMS0xLTEuNzQ2LS41YTIgMiAwIDAgMSAxLTEuNzRsLjE1LS4xYTIgMiAwIDAgMCAuNzMtMi43M2wtLjIyLS4zOGEyIDIgMCAwIDAtMi43My0uNzNsLS4xNS4wOGEyIDIgMCAwIDUtMiAwbC0uNDMtLjI1YTIgMiAwIDAgMS0xLTEuNzNWNGEyIDIgMCAwIDAtMi0yeiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiLz48L3N2Zz4=') !important;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xMi4yMiAyaC0uNDRhMiAyIDAgMCAwLTIgMnYxLjhhMiAyIDAgMCAxLTEgMS43M2wtLjQzLjI1YTIgMiAwIDAgMS0yIDBsLS4xNS0uMDhhMiAyIDAgMCAwLTIuNzMuNzNsLS4yMi4zOGEyIDIgMCAwIDAgLjczIDIuNzNsLjE1LjFhMiAyIDAgMCAxIDEgMS43MnYuNTFhMiAyIDAgMCAxLTEgMS43NGwtLjE1LjA5YTIgMiAwIDAgMC0uNzMuMjcybC4yMi4zOGEyIDIgMCAwIDAgMi43My43M2wuMTUtLjA4YTIgMiAwIDEgMSAyIDBsLjQzLjI1YTIgMiAwIDAgMSAxIDEuNzNWMjBhMiAyIDAgMCAwIDIgMmguNDRhMiAyIDAgMCAwIDItMnYtMS44YTIgMiAwIDAgMSAxLTEuNzNsLjQzLS4yNWEyIDIgMCAwIDEgMiAwbC4xNS4wOGEyIDIgMCAwIDAgMi43My0uNzNsLjIyLS4zOWEyIDIgMCAwIDAtLjczLTIuNzNsLS4xNS0uMDhhMiAyIDAgMCAxLTEtMS43NDYtLjVhMiAyIDAgMCAxIDEtMS43NGwuMTUtLjFhMiAyIDAgMCAwIC43My0yLjczbC0uMjItLjM4YTIgMiAwIDAgMC0yLjczLS43M2wtLjE1LjA4YTIgMiAwIDAgNS0yIDBsLS40My0uMjVhMiAyIDAgMCAxLTEtMS43M1Y0YTIgMiAwIDAgMC0yLTJ6Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMyIvPjwvc3ZnPg==') !important;
 }
 
 /* Global button design */
@@ -198,6 +203,10 @@ button[class*="sidebar-collapse"] {
 .header-card-memory {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.05) 100%);
     border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.header-card-pdf {
+    background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%);
+    border: 1px solid rgba(251, 146, 60, 0.2);
 }
 .header-card-settings {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(244, 63, 94, 0.05) 100%);
@@ -598,25 +607,25 @@ div[data-testid="stTabs"] button[role="tab"]::before,
     content: none !important;
 }
 
-/* Modern Streamlit style: target the inner text p and span wrapper elements inside the tab buttons */
-div[data-testid="stTabBar"] button[role="tab"] p,
-div[data-testid="stTabBar"] button[role="tab"] span,
-div[data-testid="stTabs"] button[role="tab"] p,
-div[data-testid="stTabs"] button[role="tab"] span,
-.stTabs [data-baseweb="tab"] p,
-.stTabs [data-baseweb="tab"] span {
+/* Target tabs that have our specific data-tab-name attribute to apply padding for the icon */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name] p,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name] span,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name] p,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name] span,
+.stTabs [data-baseweb="tab"][data-tab-name] p,
+.stTabs [data-baseweb="tab"][data-tab-name] span {
     position: relative !important;
     padding-left: 28px !important;
     display: inline-flex !important;
     align-items: center !important;
 }
 
-div[data-testid="stTabBar"] button[role="tab"] p::before,
-div[data-testid="stTabBar"] button[role="tab"] span::before,
-div[data-testid="stTabs"] button[role="tab"] p::before,
-div[data-testid="stTabs"] button[role="tab"] span::before,
-.stTabs [data-baseweb="tab"] p::before,
-.stTabs [data-baseweb="tab"] span::before {
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name] span::before {
     content: "" !important;
     position: absolute !important;
     left: 0 !important;
@@ -629,24 +638,54 @@ div[data-testid="stTabs"] button[role="tab"] span::before,
     display: inline-block !important;
 }
 
-/* Tab 1 Icon: Microscope (Indigo) */
-div[data-testid="stTabBar"] button[role="tab"]:nth-of-type(1) p::before,
-div[data-testid="stTabBar"] button[role="tab"]:nth-of-type(1) span::before,
-div[data-testid="stTabs"] button[role="tab"]:nth-of-type(1) p::before,
-div[data-testid="stTabs"] button[role="tab"]:nth-of-type(1) span::before,
-.stTabs [data-baseweb="tab"]:nth-of-type(1) p::before,
-.stTabs [data-baseweb="tab"]:nth-of-type(1) span::before {
+/* Research Workspace Tab (Magnifying glass, Indigo) */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="research-workspace"] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="research-workspace"] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="research-workspace"] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="research-workspace"] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name="research-workspace"] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name="research-workspace"] span::before {
     background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjExIiBjeT0iMTEiIHI9IjgiLz48cGF0aCBkPSJtMjEgMjEtNC4zLTQuMyIvPjwvc3ZnPg==') !important;
 }
 
-/* Tab 2 Icon: Folder (Yellow) */
-div[data-testid="stTabBar"] button[role="tab"]:nth-of-type(2) p::before,
-div[data-testid="stTabBar"] button[role="tab"]:nth-of-type(2) span::before,
-div[data-testid="stTabs"] button[role="tab"]:nth-of-type(2) p::before,
-div[data-testid="stTabs"] button[role="tab"]:nth-of-type(2) span::before,
-.stTabs [data-baseweb="tab"]:nth-of-type(2) p::before,
-.stTabs [data-baseweb="tab"]:nth-of-type(2) span::before {
+/* Document Library Tab (Folder, Yellow) */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="document-library"] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="document-library"] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="document-library"] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="document-library"] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name="document-library"] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name="document-library"] span::before {
     background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmYmJmMjQiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMiAxOWEyIDIgMCAwIDEtMiAySDRhMiAyIDAgMCAxLTItMlY1YTIgMiAwIDAgMSAyLTJoNWwyIDNoOWEyIDIgMCAwIDEgMiAyeiIvPjwvc3ZnPg==') !important;
+}
+
+/* Executive Summary Tab (FileText, Indigo) */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="executive-summary"] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="executive-summary"] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="executive-summary"] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="executive-summary"] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name="executive-summary"] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name="executive-summary"] span::before {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM4MThjZjgiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xNSAySDZhMiAyIDAgMCAwLTIgMnYxNmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWN1oiLz48cGF0aCBkPSJNMTQgMnY0YTIgMiAwIDAgMCAyIDJoNCIvPjxwYXRoIGQ9Ik0xMCA5SDgiLz48cGF0aCBkPSJNMTYgMTNIOCIvPjxwYXRoIGQ9Ik0xNiAxN0g4Ii8+PC9zdmc+') !important;
+}
+
+/* Critic Analysis Tab (ShieldCheck, Amber) */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="critic-analysis"] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="critic-analysis"] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="critic-analysis"] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="critic-analysis"] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name="critic-analysis"] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name="critic-analysis"] span::before {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmYmJmMjQiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xMiAyMnM4LTQgOC0xMFY1bC04LTMtOCAzdjdjMCA2IDggMTAgOCAxMHoiLz48cGF0aCBkPSJtOSAxMSAyIDIgNC00Ii8+PC9zdmc+') !important;
+}
+
+/* Full Research Report Tab (Microscope, Green) */
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="full-research-report"] p::before,
+div[data-testid="stTabBar"] button[role="tab"][data-tab-name="full-research-report"] span::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="full-research-report"] p::before,
+div[data-testid="stTabs"] button[role="tab"][data-tab-name="full-research-report"] span::before,
+.stTabs [data-baseweb="tab"][data-tab-name="full-research-report"] p::before,
+.stTabs [data-baseweb="tab"][data-tab-name="full-research-report"] span::before {
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik02IDE4aDgiLz48cGF0aCBkPSJNMyAyMmgxOCIvPjxwYXRoIGQ9Ik0xNCAyMmE3IDcgMCAxIDAtMTQgMCIvPjxwYXRoIGQ9Ik05IDE0aDIiLz48cGF0aCBkPSJNOSAxMmEzIDMgMCAwIDEtMy0zVjZoNnYzYTMgMyAwIDAgMS0zIDNaIi8+PHBhdGggZD0iTTEyIDZWM2ExIDEgMCAwIDAtMS0xSDlhMSAxIDAgMCAwLTEgMXYzIi8+PC9zdmc+') !important;
 }
 
 """
@@ -658,11 +697,11 @@ div[data-testid="stTabs"] button[role="tab"]:nth-of-type(2) span::before,
     # We use st.iframe to execute custom javascript inside a same-origin iframe.
     # The script accesses window.parent.document to apply global styling and font link elements
     # directly to the parent document's head, which persists across page changes.
-    js_code = f"""
+    js_template = """
     <script>
-        try {{
+        try {
             var parentDoc = window.parent.document || document;
-            if (!parentDoc.getElementById('nexus-google-fonts')) {{
+            if (!parentDoc.getElementById('nexus-google-fonts')) {
                 var link1 = parentDoc.createElement('link');
                 link1.rel = 'preconnect';
                 link1.href = 'https://fonts.googleapis.com';
@@ -679,20 +718,55 @@ div[data-testid="stTabs"] button[role="tab"]:nth-of-type(2) span::before,
                 link3.rel = 'stylesheet';
                 link3.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap';
                 parentDoc.head.appendChild(link3);
-            }}
+            }
             
             var styleEl = parentDoc.getElementById('nexus-global-theme');
-            if (!styleEl) {{
+            if (!styleEl) {
                 styleEl = parentDoc.createElement('style');
                 styleEl.id = 'nexus-global-theme';
                 parentDoc.head.appendChild(styleEl);
-            }}
-            styleEl.textContent = atob('{b64_css}');
-        }} catch (err) {{
+            }
+            styleEl.textContent = atob('CSS_PLACEHOLDER');
+
+            // Dynamic Tab tagging function
+            function tagTabs() {
+                var tabs = parentDoc.querySelectorAll('button[role="tab"]');
+                tabs.forEach(function(tab) {
+                    var textEl = tab.querySelector('p, span');
+                    if (textEl) {
+                        var text = textEl.textContent.trim();
+                        // Strip emojis to match clean names
+                        var cleanText = text.replace(/[\\u2700-\\u27BF]|[\\uE000-\\uF8FF]|\\uD83C[\\uDC00-\\uDFFF]|\\uD83D[\\uDC00-\\uDFFF]|[\\u2011-\\u26FF]|\\uD83E[\\uDD00-\\uDFFF]/g, '').trim();
+                        if (cleanText) {
+                            var tabId = cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                            if (tab.getAttribute('data-tab-name') !== tabId) {
+                                tab.setAttribute('data-tab-name', tabId);
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Execute immediately
+            tagTabs();
+
+            // Setup MutationObserver to watch for dynamically loaded tabs
+            if (!window.parent.__nexusTabObserver) {
+                var observer = new MutationObserver(function(mutations) {
+                    tagTabs();
+                });
+                observer.observe(parentDoc.body, {
+                    childList: true,
+                    subtree: true
+                });
+                window.parent.__nexusTabObserver = observer;
+            }
+        } catch (err) {
             console.error("Parent style injection failed:", err);
-        }}
+        }
     </script>
     """
+    js_code = js_template.replace('CSS_PLACEHOLDER', b64_css)
 
     st.iframe(js_code, height=1)
 

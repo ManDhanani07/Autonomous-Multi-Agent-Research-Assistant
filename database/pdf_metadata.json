@@ -96,5 +96,22 @@
         "summary": "This paper presents a deep learning approach for predicting molecular properties, specifically toxicity, using Graph Convolutional Networks (GCN). The core objective is to accelerate drug discovery by predicting molecular properties early in the development pipeline, reducing costs and time. The methodology involves utilizing GCN to learn molecular representations from graph-structured data, enabling the prediction of molecular toxicity. The key contribution of this work is the application of GCN to molecular property prediction, which has the potential to improve the accuracy and efficiency of drug discovery. By leveraging GCN, this approach can effectively capture complex molecular relationships and structures, leading to more accurate predictions of molecular properties. Overall, this paper aims to demonstrate the effectiveness of GCN in molecular property prediction, providing a promising tool for the pharmaceutical industry.",
         "timestamp": "2026-06-16T12:52:07.582329",
         "workspace": "default"
+    },
+    {
+        "filename": "Artificial_Intelligence_AI_Fundamentals_for_the_Display_Industry_A_Review_August_2024.pdf",
+        "title": "Artificial Intelligence (AI) Fundamentals for the Display Industry: A Review (August 2024)",
+        "chunk_count": 46,
+        "sections": [
+            "Header/Title",
+            "Abstract",
+            "Introduction",
+            "Conclusion",
+            "References"
+        ],
+        "table_count": 0,
+        "reference_count": 75,
+        "summary": "This paper provides a comprehensive review of artificial intelligence (AI) fundamentals and their applications in the display industry. The core objective is to introduce essential AI theories, including machine learning (ML) and deep learning (DL), to facilitate understanding of AI applications in the display industry. The methodology involves reviewing optimization techniques, deep learning architectures, and learning paradigms, as well as explaining explainable AI techniques for model analysis. The key contributions of this paper include providing a hierarchical relationship between AI, ML, and DL, classifying ML tasks, and introducing primary metrics and models for each task. The paper aims to serve as a foundation for a separate paper reviewing practical application cases of AI in the display industry, providing a comprehensive overview of AI concepts and methodologies for industry professionals and researchers.",
+        "timestamp": "2026-06-17T12:10:25.239318",
+        "workspace": "default"
     }
 ]

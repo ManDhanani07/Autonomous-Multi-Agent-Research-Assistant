@@ -59,6 +59,17 @@ def clean_abstract(abstract: str) -> str:
     cleaned = re.sub(r"^abstract:\s*", "", cleaned, flags=re.IGNORECASE)
         
     return cleaned
+import threading
+
+# Thread locks and rate-limiting timestamp tracking for API query spacing
+_arxiv_lock = threading.Lock()
+_last_arxiv_time = 0.0
+
+_semantic_scholar_lock = threading.Lock()
+_last_semantic_scholar_time = 0.0
+
+_crossref_lock = threading.Lock()
+_last_crossref_time = 0.0
 
 
 def search_arxiv(query: str, limit: int = 10) -> list:
@@ -66,6 +77,14 @@ def search_arxiv(query: str, limit: int = 10) -> list:
     Searches arXiv API using direct XML HTTP requests.
     Fails fast on HTTP 429 or network errors to prevent hanging.
     """
+    global _last_arxiv_time
+    with _arxiv_lock:
+        elapsed = time.time() - _last_arxiv_time
+        if elapsed < 1.5:
+            sleep_needed = 1.5 - elapsed
+            time.sleep(sleep_needed)
+        _last_arxiv_time = time.time()
+
     start_time = time.perf_counter()
     papers = []
     print(f"[*] Academic Search: Starting arXiv query for: '{query}'")
@@ -132,7 +151,8 @@ def search_arxiv(query: str, limit: int = 10) -> list:
                     "citations": 0,
                     "url": paper_url,
                     "venue": "arXiv",
-                    "source": "arXiv"
+                    "source": "arXiv",
+                    "doi": "N/A"
                 })
                 
             latency = time.perf_counter() - start_time
@@ -157,6 +177,14 @@ def search_semantic_scholar(query: str, limit: int = 10) -> list:
     Supports SEMANTIC_SCHOLAR_API_KEY environment variable to increase rate limits.
     """
     import os
+    global _last_semantic_scholar_time
+    with _semantic_scholar_lock:
+        elapsed = time.time() - _last_semantic_scholar_time
+        if elapsed < 1.05:
+            sleep_needed = 1.05 - elapsed
+            time.sleep(sleep_needed)
+        _last_semantic_scholar_time = time.time()
+
     start_time = time.perf_counter()
     papers = []
     print(f"[*] Academic Search: Starting Semantic Scholar query for: '{query}'")
@@ -195,6 +223,7 @@ def search_semantic_scholar(query: str, limit: int = 10) -> list:
                 # Check for arXiv preprint indicators
                 external_ids = p.get("externalIds") or {}
                 arxiv_id = external_ids.get("ArXiv")
+                doi = external_ids.get("DOI")
                 
                 source = "Semantic Scholar"
                 paper_url = p.get("url") or "#"
@@ -213,7 +242,8 @@ def search_semantic_scholar(query: str, limit: int = 10) -> list:
                     "citations": p.get("citationCount") or 0,
                     "url": paper_url,
                     "venue": venue.strip() if venue else ("arXiv" if source == "arXiv" else ""),
-                    "source": source
+                    "source": source,
+                    "doi": doi or "N/A"
                 })
             latency = time.perf_counter() - start_time
             print(f"[*] Academic Search: Successfully retrieved {len(papers)} papers from Semantic Scholar in {latency:.2f}s.")
@@ -235,6 +265,14 @@ def search_crossref(query: str, limit: int = 10) -> list:
     Queries Crossref Rest API via requests to find peer-reviewed papers.
     Fails fast on HTTP 429 or network errors to prevent hanging.
     """
+    global _last_crossref_time
+    with _crossref_lock:
+        elapsed = time.time() - _last_crossref_time
+        if elapsed < 1.05:
+            sleep_needed = 1.05 - elapsed
+            time.sleep(sleep_needed)
+        _last_crossref_time = time.time()
+
     start_time = time.perf_counter()
     papers = []
     print(f"[*] Academic Search: Starting Crossref query for: '{query}'")
@@ -285,7 +323,8 @@ def search_crossref(query: str, limit: int = 10) -> list:
                     "citations": item.get("is-referenced-by-count") or 0,
                     "url": item.get("URL") or "#",
                     "venue": venue.strip(),
-                    "source": "Crossref"
+                    "source": "Crossref",
+                    "doi": item.get("DOI") or "N/A"
                 })
             latency = time.perf_counter() - start_time
             print(f"[*] Academic Search: Successfully retrieved {len(papers)} papers from Crossref in {latency:.2f}s.")
